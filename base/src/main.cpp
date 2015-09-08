@@ -20,6 +20,7 @@
 #include <list>
 #include <random>
 #include <ctime>
+#include <algorithm>
 
 #include "InstantRadiosity.h"
 
@@ -256,7 +257,7 @@ void initMesh()
 	bBox * bbBuff = (bBox *) glMapBufferRange (GL_SHADER_STORAGE_BUFFER, 0, boundingBoxes.size ()*sizeof(bBox), bufferAccessMask);
 	int count = 0;
 	for (std::list<bBox>::iterator i = boundingBoxes.begin (); i != boundingBoxes.end (); ++i)
-	{	
+	{
 		bbBuff [count] = *i;
 		++count;
 	}
@@ -351,7 +352,6 @@ void initShader()
 	// Forward shaders
 	const char * forward_frag = "../../../res/shaders/forward_frag.glsl";
 	const char * fplus_frag = "../../../res/shaders/fplus_frag.glsl";
-	const char * fplus_lightcull = "../../../res/shaders/fplus_lightcull.glsl";
 #else
 	const char * pass_vert = "../res/shaders/pass.vert";
 	const char * shade_vert = "../res/shaders/shade.vert";
@@ -366,10 +366,6 @@ void initShader()
 	GLuint cshader = Utility::loadComputeShader (vpl_init);
 	vpl_prog = glCreateProgram ();
 	Utility::attachAndLinkCSProgram (vpl_prog, cshader);
-
-	GLuint fplcshader = Utility::loadComputeShader (fplus_lightcull);
-	fplus_lightcull_prog = glCreateProgram ();
-	Utility::attachAndLinkCSProgram (fplus_lightcull_prog, fplcshader);
 
 	Utility::shaders_t shaders = Utility::loadShaders(pass_vert, forward_frag);
 	forward_shading_prog = glCreateProgram();
@@ -755,7 +751,6 @@ mat4x4 Camera::get_view()
     return lookAt(cent, cent + spun, up);
 }
 
-
 Light lig(vec3(3.5, -4.0, 5.3),
         normalize(vec3(0,0,-1.0)),
         normalize(vec3(0,1,0)));
@@ -767,8 +762,6 @@ mat4x4 Light::get_light_view()
     vec3 cent(pos, z);
     return lookAt(cent, cent + spun, up);
 }
-
-
 
 mat4x4 get_mesh_world() 
 {
@@ -873,49 +866,6 @@ void draw_mesh_forward ()
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 }
-
-void draw_mesh_fplus () 
-{
-    glUseProgram(fplus_shading_prog);
-
-    mat4 model = get_mesh_world();
-	mat4 view,lview, persp, lpersp;
-
-	view = cam.get_view(); // Camera view Matrix
-	lview = lig.get_light_view();
-	persp = perspective(45.0f,(float)width/(float)height,NEARP,FARP);
-	lpersp = perspective(120.0f,(float)width/(float)height,NEARP,FARP);
-
-    mat4 inverse_transposed = transpose(inverse(view*model));
-	mat4 view_inverse = inverse (view);
-	uvec2 resolution = uvec2 (width, height);
-
-    glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, depthMapTexture);
-
-	glUniform1i (glGetUniformLocation (fplus_shading_prog, "depthTex"),0);
-	glUniformMatrix4fv(glGetUniformLocation(fplus_shading_prog,"u_Model"),1,GL_FALSE,&model[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(fplus_shading_prog,"u_View"),1,GL_FALSE,&view[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation(fplus_shading_prog,"u_lView"),1,GL_FALSE,&lview[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(fplus_shading_prog,"u_Persp"),1,GL_FALSE,&persp[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation(fplus_shading_prog,"u_LPersp"),1,GL_FALSE,&lpersp[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(fplus_shading_prog,"u_InvTrans") ,1,GL_FALSE,&inverse_transposed[0][0]);
-
-	glUniformMatrix4fv(glGetUniformLocation(fplus_shading_prog,"u_ViewInverse") ,1,GL_FALSE,&view_inverse[0][0]);
- 	glUniform2uiv (glGetUniformLocation(fplus_shading_prog, "resolution"), 1, &resolution[0]);
-
-    for(int i=0; i<draw_meshes.size(); i++)
-	{
-        glUniform3fv(glGetUniformLocation(fplus_shading_prog, "u_Color"), 1, &(draw_meshes[i].color[0]));
-        glBindVertexArray(draw_meshes[i].vertex_array);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, draw_meshes[i].vbo_indices);
-        
-		glDrawElements(GL_TRIANGLES, draw_meshes[i].num_indices, GL_UNSIGNED_SHORT,0);
-    }
-    glBindVertexArray(0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
-}
-
 
 enum Display display_type = DISPLAY_TOTAL;
 void setup_quad(GLuint prog)
@@ -1267,91 +1217,12 @@ void PopulateLights ()
 
 void RenderForward ()
 {
-//	glUseProgram (forward_shading_prog);
 	PopulateLights ();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
 
-	/*glEnable (GL_DEPTH_TEST);
-	glColorMask (GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE);
-	glDepthFunc (GL_LESS);
-	glDepthMask (GL_TRUE);
 	draw_mesh_forward ();
-
-	glEnable (GL_DEPTH_TEST);
-	glColorMask (GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glDepthFunc (GL_LEQUAL);
-	glDepthMask (GL_FALSE);*/
-	draw_mesh_forward ();
-}
-
-void RenderFPlus ()
-{
-//	glUseProgram (forward_shading_prog);
-	PopulateLights ();
-//	RenderDepthMap (RENDER_CAMERA);
-	glUseProgram (fplus_lightcull_prog);
-    glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, depthMapTexture);
-//    glBindImageTexture (0, depthMapTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-
-	glUniform1i (glGetUniformLocation (fplus_lightcull_prog, "depthTex"),0);
-//	glUniform1i (glGetUniformLocation (fplus_lightcull_prog, "depthTex2"),0);
-    glUniform1i (glGetUniformLocation (fplus_lightcull_prog, "u_numLights"), nLights);
-	glUniform1i (glGetUniformLocation (fplus_lightcull_prog, "u_numVPLs"), nVPLs);
-
-	mat4 inverse_projection = inverse (cam.get_perspective());
-	glUniformMatrix4fv (glGetUniformLocation (fplus_lightcull_prog, "u_InvProj"), 1, GL_FALSE, &inverse_projection[0][0]);
-	mat4 view = cam.get_view();
-	glUniformMatrix4fv (glGetUniformLocation (fplus_lightcull_prog, "u_View"), 1, GL_FALSE, &view[0][0]);
-
-	/*glBindBuffer (GL_SHADER_STORAGE_BUFFER, lightListSBO);
-	GLint bufferAccessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-	vec4 * rBuff = (vec4 *) glMapBufferRange (GL_SHADER_STORAGE_BUFFER, 0, 30*sizeof(vec4), bufferAccessMask);
-	int count = 0;
-	for (int j = 0; j < 30; ++j)
-		rBuff [j] = vec4 (-1, -1, -1, -1);
-	glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);*/
-
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, 1, vplPosSBO);
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, 2, lightPosSBO);
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, 3, lightListSBO);
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, 4, debugBufferSBO);
-
-	glDispatchCompute (width / 8, height / 8, 1);
-	glFinish ();
-	glMemoryBarrier (GL_SHADER_STORAGE_BARRIER_BIT);
-
-	// Debug code---------------------------
-	glBindBuffer (GL_SHADER_STORAGE_BUFFER, lightPosSBO);
-	vec4* llist = (vec4 *) glMapBuffer (GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-	glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);
-	glBindBuffer (GL_SHADER_STORAGE_BUFFER, debugBufferSBO);
-	llist = (vec4 *) glMapBuffer (GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-	glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);
-	glBindBuffer (GL_SHADER_STORAGE_BUFFER, vplPosSBO);
-	LightData *llist4 = (LightData *) glMapBuffer (GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-	glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);
-	glBindBuffer (GL_SHADER_STORAGE_BUFFER, lightListSBO);
-	uvec4 *llist2 = (uvec4 *) glMapBuffer (GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-	for (int i = 0; i < 90; ++i)
-		for (int j = 0; j < 160; ++j)
-			if (llist2 [64*((i*160)+j)].z > 0)
-				if (llist2 [64*((i*160)+j)].y == 1)
-					int breakHere = -1;
-	glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);
-	//---------------------------Debug code
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, 1, vplPosSBO);
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, 2, lightPosSBO);
-	glBindBufferBase (GL_SHADER_STORAGE_BUFFER, 3, lightListSBO);
-
-	draw_mesh_fplus ();
 }
 
 void display(void)
@@ -1366,8 +1237,6 @@ void display(void)
 		RenderForward ();
 	else
 		RenderDeferred ();
-
-//	RenderFPlus ();
 
     updateTitle();
 
@@ -1498,7 +1367,7 @@ void keyboard(unsigned char key, int x, int y)
 		case 'f':
 		case 'F':
 			forwardR = !forwardR;
-            break;
+			break;
 		case 'G':
 		case 'g':
 			indirectON = !indirectON;
@@ -1519,17 +1388,6 @@ void init()
 
 void initSSBO ()
 {
-	//GLint bufferAccessMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-	//LightData * ldBuff = (LightData *) glMapBufferRange (GL_SHADER_STORAGE_BUFFER, 0, nLights*sizeof(LightData), bufferAccessMask);
-
-	//int count = 0;
-	//for (std::list<LightData>::iterator i = lightList.begin (); i != lightList.end (); ++i)
-	//{
-	//	ldBuff [count] = *i;
-	//	++ count;
-	//}
-	//glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);
-
 	glGenBuffers (1, &vplPosSBO);
 	checkError (" in initVPL () while trying to generate VPL SSBO!");
 	glBindBuffer (GL_SHADER_STORAGE_BUFFER, vplPosSBO);
