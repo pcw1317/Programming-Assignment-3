@@ -2,6 +2,7 @@
 
 #include "Utility.h"
 #include "Camera.h"
+#include "Light.h"
 
 #include "SOIL.h"
 #include <GL/glut.h>
@@ -706,14 +707,6 @@ Camera cam(vec3(2.5, 5, 2),
 Light lig(vec3(3.5, -4.0, 5.3),
         normalize(vec3(0,0,-1.0)),
         normalize(vec3(0,1,0)));
-
-mat4x4 Light::get_light_view() 
-{
-    vec3 inclin = glm::gtx::rotate_vector::rotate(start_dir,ry,start_left);
-    vec3 spun = glm::gtx::rotate_vector::rotate(inclin,rx,up);
-    vec3 cent(pos, z);
-    return lookAt(cent, cent + spun, up);
-}
 
 mat4x4 get_mesh_world() 
 {
