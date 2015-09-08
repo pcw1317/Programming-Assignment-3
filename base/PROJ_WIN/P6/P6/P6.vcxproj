@@ -46,14 +46,14 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\SOIL;..\..\..\src\tiny_obj_loader;..\..\..\..\shared32\freeglut\include;..\..\..\..\shared32\glew\include;..\..\..\..\shared32\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\SOIL;..\..\..\src\tiny_obj_loader;..\..\..\..\shared32\freeglut\include;..\..\..\..\shared32\glew\include;..\..\..\..\shared32\glm;..\..\..\..\shared32\embree2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(Configuration);..\..\..\..\shared32\glew\lib\Release\Win32;..\..\..\..\shared32\freeglut\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>SOIL.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(Configuration);..\..\..\..\shared32\glew\lib\Release\Win32;..\..\..\..\shared32\freeglut\lib;..\..\..\..\shared32\embree2\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SOIL.lib;freeglut.lib;glew32.lib;embree.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
