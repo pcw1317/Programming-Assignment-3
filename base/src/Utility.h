@@ -25,10 +25,9 @@ namespace Utility
 	// From OpenGL Shading Language 3rd Edition, p215-216
 	// Display (hopefully) useful error messages if shader fails to compile
 	void printShaderInfoLog(GLint shader);
-
-	void printLinkInfoLog(GLint prog) ;
-
+	void printLinkInfoLog(GLint prog);
 	void printFramebufferStatus(GLenum framebufferStatus);
+	void printGLError(char * printString);
 }
  
 #endif
