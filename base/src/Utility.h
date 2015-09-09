@@ -27,6 +27,8 @@ namespace Utility
 	void printShaderInfoLog(GLint shader);
 
 	void printLinkInfoLog(GLint prog) ;
+
+	void printFramebufferStatus(GLenum framebufferStatus);
 }
  
 #endif

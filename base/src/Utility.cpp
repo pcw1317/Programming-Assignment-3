@@ -188,4 +188,36 @@ namespace Utility
 			printLinkInfoLog(program);
 		}
 	}
+
+	void printFramebufferStatus(GLenum framebufferStatus)
+	{
+		switch (framebufferStatus)
+		{
+		case GL_FRAMEBUFFER_COMPLETE_EXT: break;
+		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
+			printf("Attachment Point Unconnected\n");
+			break;
+		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+			printf("Missing Attachment\n");
+			break;
+		case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+			printf("Dimensions do not match\n");
+			break;
+		case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+			printf("Formats\n");
+			break;
+		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+			printf("Draw Buffer\n");
+			break;
+		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+			printf("Read Buffer\n");
+			break;
+		case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+			printf("Unsupported Framebuffer Configuration\n");
+			break;
+		default:
+			printf("Unkown Framebuffer Object Failure\n");
+			break;
+		}
+	}
 }
