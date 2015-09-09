@@ -79,6 +79,7 @@
     <ClCompile Include="..\..\..\src\InstantRadiosity.cpp" />
     <ClCompile Include="..\..\..\src\Light.cpp" />
     <ClCompile Include="..\..\..\src\main.cpp" />
+    <ClCompile Include="..\..\..\src\Mesh.cpp" />
     <ClCompile Include="..\..\..\src\tiny_obj_loader\tiny_obj_loader.cc" />
     <ClCompile Include="..\..\..\src\Utility.cpp" />
   </ItemGroup>
@@ -87,6 +88,7 @@
     <ClInclude Include="..\..\..\src\InstantRadiosity.h" />
     <ClInclude Include="..\..\..\src\Light.h" />
     <ClInclude Include="..\..\..\src\main.h" />
+    <ClInclude Include="..\..\..\src\Mesh.h" />
     <ClInclude Include="..\..\..\src\tiny_obj_loader\tiny_obj_loader.h" />
     <ClInclude Include="..\..\..\src\Utility.h" />
   </ItemGroup>
