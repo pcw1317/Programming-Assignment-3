@@ -1,5 +1,29 @@
+#include "InstantRadiosity.h"
 
-#include	"InstantRadiosity.h"
+void InstantRadiosityEmbree::addMesh(const Mesh & mesh)
+{
+	unsigned int geomID = rtcNewTriangleMesh(scene, RTC_GEOMETRY_DYNAMIC, 
+		mesh.indices.size() / 3, mesh.vertices.size());
+
+	glm::vec3 *vertices = (glm::vec3 *) rtcMapBuffer(scene, geomID, RTC_VERTEX_BUFFER);
+	unsigned int vertexIdx = 0;
+	for (auto vertex : mesh.vertices)
+	{
+		vertices[vertexIdx++] = glm::vec3(vertex);
+	}
+	rtcUnmapBuffer(scene, geomID, RTC_VERTEX_BUFFER);
+
+	glm::ivec3 *triangles = (glm::ivec3 *) rtcMapBuffer(scene, geomID, RTC_INDEX_BUFFER);
+	for (int triIdx = 0; triIdx < mesh.indices.size() / 3; ++triIdx)
+	{
+		triangles[triIdx].x = mesh.indices[triIdx * 3];
+		triangles[triIdx].y = mesh.indices[triIdx * 3 + 1];
+		triangles[triIdx].z = mesh.indices[triIdx * 3 + 2];
+	}
+	rtcUnmapBuffer(scene, geomID, RTC_INDEX_BUFFER);
+
+	geomIDToMesh[geomID] = mesh;
+}
 
 // Gives a random direction over the hemisphere above the surface with the normal "normal".
 // v1 and v2 are to be in the interval [0,1].
