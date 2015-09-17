@@ -71,6 +71,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLposPointLight(glm::vec3 poi
 glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec)
 {
 	// to be implemented
+	return glm::vec3();
 }
 
 // Gives a random direction over the hemisphere above the surface with the normal "normal".
