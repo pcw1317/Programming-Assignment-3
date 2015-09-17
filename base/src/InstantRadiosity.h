@@ -10,6 +10,15 @@ struct LightData
 {
 	glm::vec3 position;
 	glm::vec3 intensity;
+	glm::vec3 direction;
+};
+
+struct AreaLightData
+{
+	glm::vec3 lightMin;
+	glm::vec3 lightMax;
+	glm::vec3 intensity;
+	glm::vec3 direction;
 };
 
 class InstantRadiosityEmbree
@@ -30,9 +39,9 @@ public:
 	}
 
 	void addMesh(Mesh &mesh);
-	std::vector<LightData> getVPLposPointLight(glm::vec3 pointLightPos, glm::vec3 lightNormalVec, unsigned int count);
-	std::vector<LightData> getVPLposAreaLight(glm::vec3 areaLightMin, glm::vec3 areaLightMax, unsigned int count);
-
+	std::vector<LightData> getVPLpos(LightData light, unsigned int count);
+	std::vector<LightData> getVPLpos(AreaLightData light, unsigned int count);
+	
 protected:
 	std::vector<unsigned int> geomIDs;
 	std::map<unsigned int, Mesh *> geomIDToMesh;

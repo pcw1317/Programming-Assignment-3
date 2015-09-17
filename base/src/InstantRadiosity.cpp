@@ -25,18 +25,18 @@ void InstantRadiosityEmbree::addMesh(Mesh &mesh)
 	geomIDToMesh[geomID] = &mesh;
 }
 
-std::vector<LightData> InstantRadiosityEmbree::getVPLposPointLight(glm::vec3 pointLightPos, glm::vec3 lightNormalVec, unsigned int count)
+std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsigned int count)
 {
 	std::vector<LightData> res;
 
 	for (int rayCount = 0; rayCount < count; ++rayCount)
 	{
 		// should be a proper stratified quasirandom sampling direction
-		glm::vec3 randomDir = stratifiedSampling(lightNormalVec);
+		glm::vec3 randomDir = stratifiedSampling(light.direction);
 
 		// Ray init.
 		RTCRay ray;
-		ray.org[0] = pointLightPos.x; ray.org[1] = pointLightPos.y; ray.org[2] = pointLightPos.z;
+		ray.org[0] = light.position.x; ray.org[1] = light.position.y; ray.org[2] = light.position.z;
 		ray.dir[0] = randomDir.x; ray.dir[1] = randomDir.y; ray.dir[2] = randomDir.z;
 		ray.tnear = 0.f;
 		ray.tfar = INFINITY;
@@ -58,7 +58,8 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLposPointLight(glm::vec3 poi
 		{
 			LightData VPL;
 			VPL.position = rayOrg + rayDir * ray.tfar;
-			VPL.intensity = geomIDToMesh[ray.geomID]->color *	// diffuse only
+			VPL.intensity = light.intensity *	// light color
+				geomIDToMesh[ray.geomID]->color *	// diffuse only
 				glm::dot(rayNg, rayDir) *	// Lambertian cosine term
 				glm::pow((ray.tfar - ray.tnear), -2.f);	// d^-2
 			res.push_back(VPL);
@@ -68,7 +69,30 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLposPointLight(glm::vec3 poi
 	return res;
 }
 
+std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, unsigned int count)
+{
+	std::vector<LightData> res;
+
+	for (int sampleCount = 0; sampleCount < count; ++sampleCount)
+	{
+		glm::vec3 lightPos = stratifiedSampling(light.lightMin, light.lightMax);
+		LightData lightSample;
+		lightSample.position = lightPos;
+		lightSample.direction = light.direction;
+		lightSample.intensity = light.intensity;
+		std::vector<LightData> vpls = getVPLpos(light, 1);
+		res.insert(res.end(), vpls.begin(), vpls.end());
+	}
+
+	return res;
+}
+
 glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec)
+{
+	// to be implemented
+}
+
+glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax)
 {
 	// to be implemented
 }
