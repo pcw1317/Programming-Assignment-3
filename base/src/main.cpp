@@ -24,8 +24,6 @@
 
 #include "InstantRadiosity.h"
 
-using namespace glm;
-
 const float PI = 3.14159f;
 const int MAX_LIGHTS_PER_TILE = 64;
 
@@ -47,11 +45,11 @@ std::default_random_engine random_gen (time (NULL));
 
 SystemContext *context;
 
-mat4x4 get_mesh_world ();
+glm::mat4 get_mesh_world ();
 
 void initMesh() 
 {
-	mat4 modelMatrix = get_mesh_world ();
+	glm::mat4 modelMatrix = get_mesh_world ();
     for(std::vector<tinyobj::shape_t>::iterator it = context->shapesBeginIter();
             it != context->shapesEndIter(); ++it)
     {
@@ -59,8 +57,8 @@ void initMesh()
 		if (shape.material.name == "light")
 		{
 			LightData	new_light;
-			new_light.position = vec3 (3.5, -2.5, 4.5);//(mesh.vertices [0] + mesh.vertices [1] + mesh.vertices [2]) / 3.0f; 2.5, -2.5, 4.3) vec3 (3.5, -2.5, 2.0)
-			new_light.intensity = vec3(1.0f);
+			new_light.position = glm::vec3 (3.5, -2.5, 4.5);//(mesh.vertices [0] + mesh.vertices [1] + mesh.vertices [2]) / 3.0f; 2.5, -2.5, 4.3) glm::vec3 (3.5, -2.5, 2.0)
+			new_light.intensity = glm::vec3(1.0f);
 			lightList.push_back (new_light);
 		}
     }
@@ -68,8 +66,8 @@ void initMesh()
 	if (nLights == 0)
 	{
 		LightData	new_light;
-		new_light.position = vec3 (3.5, -2.0, 4.0);//(mesh.vertices [0] + mesh.vertices [1] + mesh.vertices [2]) / 3.0f; 2.5, -2.5, 4.3) vec3 (3.5, -2.5, 2.0)
-		new_light.intensity = vec3(1.0f);
+		new_light.position = glm::vec3 (3.5, -2.0, 4.0);//(mesh.vertices [0] + mesh.vertices [1] + mesh.vertices [2]) / 3.0f; 2.5, -2.5, 4.3) glm::vec3 (3.5, -2.5, 2.0)
+		new_light.intensity = glm::vec3(1.0f);
 		lightList.push_back (new_light);
 		++nLights;
 	}
@@ -79,10 +77,10 @@ void initMesh()
 device_mesh2_t device_quad;
 void initQuad()
 {
-    vertex2_t verts [] = {	{vec3(-1,1,0),vec2(0,1)},
-							{vec3(-1,-1,0),vec2(0,0)},
-							{vec3(1,-1,0),vec2(1,0)},
-							{vec3(1,1,0),vec2(1,1)}		};
+    vertex2_t verts [] = {	{glm::vec3(-1,1,0),glm::vec2(0,1)},
+							{glm::vec3(-1,-1,0),glm::vec2(0,0)},
+							{glm::vec3(1,-1,0),glm::vec2(1,0)},
+							{glm::vec3(1,1,0),glm::vec2(1,1)}		};
 
     unsigned short indices[] = { 0,1,2,0,2,3};
 
@@ -102,7 +100,7 @@ void initQuad()
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
     //Use of strided data, Array of Structures instead of Structures of Arrays
     glVertexAttribPointer(quad_attributes::POSITION, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
-    glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(vec3));
+    glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(glm::vec3));
     glEnableVertexAttribArray(quad_attributes::POSITION);
     glEnableVertexAttribArray(quad_attributes::TEXCOORD);
 
@@ -179,16 +177,16 @@ void setTextures()
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-Light lig(vec3(3.5, -4.0, 5.3),
-        normalize(vec3(0,0,-1.0)),
-        normalize(vec3(0,1,0)));
+Light lig(glm::vec3(3.5, -4.0, 5.3),
+        glm::normalize(glm::vec3(0,0,-1.0)),
+        glm::normalize(glm::vec3(0,1,0)));
 
-mat4x4 get_mesh_world() 
+glm::mat4 get_mesh_world() 
 {
-    vec3 tilt(1.0f,0.0f,0.0f);
-    //mat4 translate_mat = glm::translate(glm::vec3(0.0f,.5f,0.0f));
-    mat4 tilt_mat = glm::rotate(mat4(), 90.0f, tilt);
-    mat4 scale_mat = glm::scale(mat4(), vec3(0.01));
+    glm::vec3 tilt(1.0f,0.0f,0.0f);
+    //glm::mat4 translate_mat = glm::translate(glm::vec3(0.0f,.5f,0.0f));
+    glm::mat4 tilt_mat = glm::rotate(glm::mat4(), 90.0f, tilt);
+    glm::mat4 scale_mat = glm::scale(glm::mat4(), glm::vec3(0.01));
     return tilt_mat * scale_mat; //translate_mat;
 }
 
@@ -196,17 +194,17 @@ void draw_mesh_forward ()
 {
     glUseProgram(forward_shading_prog);
 
-    mat4 model = get_mesh_world();
-	mat4 view,lview, persp, lpersp;
+    glm::mat4 model = get_mesh_world();
+	glm::mat4 view,lview, persp, lpersp;
 
 	view = context->pCam.get_view(); // Camera view Matrix
 	lview = lig.get_light_view();
-	persp = perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
-	lpersp = perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
+	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
+	lpersp = glm::perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
 
 	//    persp = perspective(45.0f,(float)width/(float)height,NEARP,FARP);
-    mat4 inverse_transposed = transpose(inverse(view*model));
-	mat4 view_inverse = inverse (view);
+    glm::mat4 inverse_transposed = glm::transpose(glm::inverse(view*model));
+	glm::mat4 view_inverse = glm::inverse (view);
 
     glUniform1f(glGetUniformLocation(forward_shading_prog, "u_Far"), FARP);
 	glUniform1f(glGetUniformLocation(forward_shading_prog, "u_Near"), NEARP);
@@ -492,22 +490,17 @@ int main (int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 	}
-	loadedScene = true;
-
-    if(!loadedScene)
+	else
 	{
 		std::cerr << utility::sprintfpp("Usage: %s mesh=[obj file]\n", argv[0]);
-        std::cin.ignore( std::numeric_limits<std::streamsize>::max(), '\n' );
         return 0;
     }
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	context->viewport.x = 1280;
-	context->viewport.y = 720;
 	context->pCam.set_perspective
 		(
-		perspective
+		glm::perspective
 			(
 			45.0f,
 			(float)context->viewport.x/(float)context->viewport.y,

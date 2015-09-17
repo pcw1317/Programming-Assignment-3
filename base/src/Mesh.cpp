@@ -1,8 +1,6 @@
 #include "Mesh.h"
 #include <algorithm>
 
-using namespace glm;
-
 Mesh Mesh::meshFromShape(const tinyobj::shape_t & shape)
 {
 	std::vector<glm::vec3> vertices;
@@ -24,13 +22,13 @@ Mesh Mesh::meshFromShape(const tinyobj::shape_t & shape)
 				int idx0 = shape.mesh.indices[3 * i];
 				int idx1 = shape.mesh.indices[3 * i + 1];
 				int idx2 = shape.mesh.indices[3 * i + 2];
-				vec3 p0 = vec3(shape.mesh.positions[3 * idx0],
+				glm::vec3 p0 = glm::vec3(shape.mesh.positions[3 * idx0],
 					shape.mesh.positions[3 * idx0 + 1],
 					shape.mesh.positions[3 * idx0 + 2]);
-				vec3 p1 = vec3(shape.mesh.positions[3 * idx1],
+				glm::vec3 p1 = glm::vec3(shape.mesh.positions[3 * idx1],
 					shape.mesh.positions[3 * idx1 + 1],
 					shape.mesh.positions[3 * idx1 + 2]);
-				vec3 p2 = vec3(shape.mesh.positions[3 * idx2],
+				glm::vec3 p2 = glm::vec3(shape.mesh.positions[3 * idx2],
 					shape.mesh.positions[3 * idx2 + 1],
 					shape.mesh.positions[3 * idx2 + 2]);
 
@@ -40,19 +38,19 @@ Mesh Mesh::meshFromShape(const tinyobj::shape_t & shape)
 
 				if (shape.mesh.normals.size() > 0)
 				{
-					normals.push_back(vec3(shape.mesh.normals[3 * idx0],
+					normals.push_back(glm::vec3(shape.mesh.normals[3 * idx0],
 						shape.mesh.normals[3 * idx0 + 1],
 						shape.mesh.normals[3 * idx0 + 2]));
-					normals.push_back(vec3(shape.mesh.normals[3 * idx1],
+					normals.push_back(glm::vec3(shape.mesh.normals[3 * idx1],
 						shape.mesh.normals[3 * idx1 + 1],
 						shape.mesh.normals[3 * idx1 + 2]));
-					normals.push_back(vec3(shape.mesh.normals[3 * idx2],
+					normals.push_back(glm::vec3(shape.mesh.normals[3 * idx2],
 						shape.mesh.normals[3 * idx2 + 1],
 						shape.mesh.normals[3 * idx2 + 2]));
 				}
 				else
 				{
-					vec3 norm = normalize(glm::cross(normalize(p1 - p0), normalize(p2 - p0)));
+					glm::vec3 norm = glm::normalize(glm::cross(glm::normalize(p1 - p0), glm::normalize(p2 - p0)));
 					normals.push_back(norm);
 					normals.push_back(norm);
 					normals.push_back(norm);
@@ -60,16 +58,16 @@ Mesh Mesh::meshFromShape(const tinyobj::shape_t & shape)
 
 				if (shape.mesh.texcoords.size() > 0)
 				{
-					texcoords.push_back(vec2(shape.mesh.positions[2 * idx0],
+					texcoords.push_back(glm::vec2(shape.mesh.positions[2 * idx0],
 						shape.mesh.positions[2 * idx0 + 1]));
-					texcoords.push_back(vec2(shape.mesh.positions[2 * idx1],
+					texcoords.push_back(glm::vec2(shape.mesh.positions[2 * idx1],
 						shape.mesh.positions[2 * idx1 + 1]));
-					texcoords.push_back(vec2(shape.mesh.positions[2 * idx2],
+					texcoords.push_back(glm::vec2(shape.mesh.positions[2 * idx2],
 						shape.mesh.positions[2 * idx2 + 1]));
 				}
 				else
 				{
-					vec2 tex(0.0);
+					glm::vec2 tex(0.0);
 					texcoords.push_back(tex);
 					texcoords.push_back(tex);
 					texcoords.push_back(tex);
@@ -79,7 +77,7 @@ Mesh Mesh::meshFromShape(const tinyobj::shape_t & shape)
 				indices.push_back(point++);
 			}
 
-			color = vec3(shape.material.diffuse[0],
+			color = glm::vec3(shape.material.diffuse[0],
 				shape.material.diffuse[1],
 				shape.material.diffuse[2]);
 			texname = shape.material.name;//diffuse_texname;
