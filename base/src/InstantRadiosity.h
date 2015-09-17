@@ -4,6 +4,13 @@
 #include <rtcore.h>
 #include <rtcore_ray.h>
 #include "Mesh.h"
+#include <vector>
+
+struct LightData
+{
+	glm::vec3 position;
+	glm::vec3 intensity;
+};
 
 class InstantRadiosityEmbree
 {
@@ -22,19 +29,15 @@ public:
 		rtcExit();
 	}
 
-	void addMesh(const Mesh &mesh);
-	std::vector<glm::vec3> getVPLpos(glm::vec3 pointLightPos, unsigned int count);
-	std::vector<glm::vec3> getVPLpos(glm::vec3 areaLightMin, glm::vec3 areaLightMax, unsigned int count);
+	void addMesh(Mesh &mesh);
+	std::vector<LightData> getVPLposPointLight(glm::vec3 pointLightPos, glm::vec3 lightNormalVec, unsigned int count);
+	std::vector<LightData> getVPLposAreaLight(glm::vec3 areaLightMin, glm::vec3 areaLightMax, unsigned int count);
 
 protected:
 	std::vector<unsigned int> geomIDs;
-	std::map<unsigned int, Mesh &> geomIDToMesh;
-};
+	std::map<unsigned int, Mesh *> geomIDToMesh;
 
-struct LightData
-{
-	glm::vec4 position;
-	glm::vec4 intensity;
+	glm::vec3 stratifiedSampling(glm::vec3 normalVec);
 };
 
 struct Ray
