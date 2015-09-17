@@ -5,6 +5,7 @@
 #include <memory>
 #include "tiny_obj_loader.h"
 #include "Camera.h"
+#include <exception>
 
 class DeviceMesh;
 
@@ -15,7 +16,7 @@ public:
 	{
 	}
 
-	std::string loadObj(char *path);
+	void loadObj(char *path);
 	void initMesh();
 	std::vector<tinyobj::shape_t>::iterator shapesBeginIter() { return shapes.begin(); }
 	std::vector<tinyobj::shape_t>::iterator shapesEndIter() { return shapes.end(); }

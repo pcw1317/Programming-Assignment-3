@@ -3,8 +3,11 @@
 
 #include <GL/glew.h>
 #include <cstdlib>
+#include <cstdarg>
+#include <memory>
+#include <string>
 
-namespace Utility 
+namespace utility 
 {
 
 	typedef struct 
@@ -28,6 +31,8 @@ namespace Utility
 	void printLinkInfoLog(GLint prog);
 	void printFramebufferStatus(GLenum framebufferStatus);
 	void printGLError(char * printString);
+
+	std::string sprintfpp(const char *fmt_str, ...); 
 }
  
 #endif

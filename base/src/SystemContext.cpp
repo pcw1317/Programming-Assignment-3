@@ -4,11 +4,9 @@
 #include "Mesh.h"
 #include "DeviceMesh.h"
 
-
-
 std::unique_ptr<SystemContext> SystemContext::gContext = nullptr;
 
-std::string SystemContext::loadObj(char *path)
+void SystemContext::loadObj(char *path)
 {
 	std::string header, data, err;
 	std::istringstream liness(path);
@@ -20,7 +18,8 @@ std::string SystemContext::loadObj(char *path)
 		std::cout << "Loading: " << data << std::endl;
 		err = tinyobj::LoadObj(shapes, data.c_str(), path.c_str());
 	}
-	return err;
+	if (!err.empty())
+		throw std::runtime_error(err.c_str());
 }
 
 void SystemContext::initMesh()

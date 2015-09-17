@@ -132,12 +132,12 @@ void initShader()
 	const char * forward_frag = "../res/shaders/forward_frag.glsl";
 #endif
 
-	Utility::shaders_t shaders = Utility::loadShaders(pass_vert, forward_frag);
+	utility::shaders_t shaders = utility::loadShaders(pass_vert, forward_frag);
 	forward_shading_prog = glCreateProgram();
 	glBindAttribLocation(forward_shading_prog, mesh_attributes::POSITION, "Position");
     glBindAttribLocation(forward_shading_prog, mesh_attributes::NORMAL, "Normal");
     glBindAttribLocation(forward_shading_prog, mesh_attributes::TEXCOORD, "Texcoord");
-	Utility::attachAndLinkProgram(forward_shading_prog, shaders);
+	utility::attachAndLinkProgram(forward_shading_prog, shaders);
 }
 
 GLuint random_normal_tex;
@@ -483,20 +483,20 @@ int main (int argc, char* argv[])
 
     bool loadedScene = false;
 
-    for(int i = 1; i < argc; i++)
-	{
-		std::string err = context->loadObj(argv[i]);
-		if (!err.empty())
-		{
-			std::cerr << err << std::endl;
-			return -1;
+	if (argc > 1) {
+		try {
+			context->loadObj(argv[1]);
 		}
-		loadedScene = true;
-    }
+		catch(const std::exception &e) {
+			std::cerr << e.what();
+			return EXIT_FAILURE;
+		}
+	}
+	loadedScene = true;
 
     if(!loadedScene)
 	{
-        std::cout << "Usage: mesh=[obj file]" << std::endl; 
+		std::cerr << utility::sprintfpp("Usage: %s mesh=[obj file]\n", argv[0]);
         std::cin.ignore( std::numeric_limits<std::streamsize>::max(), '\n' );
         return 0;
     }
@@ -550,5 +550,5 @@ int main (int argc, char* argv[])
     glutMotionFunc(motion);
 
     glutMainLoop();
-    return 0;
+    return EXIT_SUCCESS;
 }
