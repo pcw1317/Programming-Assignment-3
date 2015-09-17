@@ -22,7 +22,7 @@ void InstantRadiosityEmbree::addMesh(const Mesh & mesh)
 	}
 	rtcUnmapBuffer(scene, geomID, RTC_INDEX_BUFFER);
 
-	geomIDToMesh[geomID] = mesh;
+	geomIDToMesh[geomID] = &mesh;
 }
 
 // Gives a random direction over the hemisphere above the surface with the normal "normal".

@@ -1,9 +1,14 @@
 #include "SystemContext.h"
 #include <sstream>
+#include <iostream>
 #include "Mesh.h"
 #include "DeviceMesh.h"
 
-std::string SystemContext::LoadObj(char *path)
+
+
+std::unique_ptr<SystemContext> SystemContext::gContext = nullptr;
+
+std::string SystemContext::loadObj(char *path)
 {
 	std::string header, data, err;
 	std::istringstream liness(path);
@@ -12,7 +17,7 @@ std::string SystemContext::LoadObj(char *path)
 	{
 		int found = data.find_last_of("/\\");
 		std::string path = data.substr(0, found + 1);
-		//std::cout << "Loading: " << data << std::endl;
+		std::cout << "Loading: " << data << std::endl;
 		err = tinyobj::LoadObj(shapes, data.c_str(), path.c_str());
 	}
 	return err;
@@ -29,3 +34,4 @@ void SystemContext::initMesh()
 		}
 	}
 }
+

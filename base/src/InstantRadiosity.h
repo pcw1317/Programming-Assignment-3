@@ -1,8 +1,8 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <rtcore.h>
-#include <rtcore_ray.h>
+#include <embree2/rtcore.h>
+#include <embree2/rtcore_ray.h>
 #include "Mesh.h"
 
 class InstantRadiosityEmbree
@@ -28,7 +28,7 @@ public:
 
 protected:
 	std::vector<unsigned int> geomIDs;
-	std::map<unsigned int, Mesh &> geomIDToMesh;
+	std::map<unsigned int, const Mesh*> geomIDToMesh;
 };
 
 struct LightData

@@ -5,34 +5,32 @@
 #include <fstream>
 #include <string>
 
-using namespace std;
-
 namespace Utility 
 {
 
 	char* loadFile(const char *fname, GLint &fSize)
 	{
-		ifstream::pos_type size;
+		std::ifstream::pos_type size;
 		char * memblock;
 		std::string text;
 
 		// file read based on example in cplusplus.com tutorial
-		ifstream file (fname, ios::in|ios::binary|ios::ate);
+		std::ifstream file (fname, std::ios::in|std::ios::binary|std::ios::ate);
 		if (file.is_open())
 		{
 			size = file.tellg();
 			fSize = (GLuint) size;
 			memblock = new char [size];
-			file.seekg (0, ios::beg);
+			file.seekg (0, std::ios::beg);
 			file.read (memblock, size);
 			file.close();
-			cout << "file " << fname << " loaded" << endl;
+			std::cout << "file " << fname << " loaded" << std::endl;
 			text.assign(memblock);
 		}
 		else
 		{
-			cout << "Unable to open file " << fname << endl;
-			cin.get ();
+			std::cout << "Unable to open file " << fname << std::endl;
+			std::cin.get ();
 			exit(1);
 		}
 		return memblock;
@@ -56,7 +54,7 @@ namespace Utility
 			infoLog = new GLchar[infoLogLen];
 			// error check for fail to allocate memory omitted
 			glGetShaderInfoLog(shader,infoLogLen, &charsWritten, infoLog);
-			cout << "InfoLog:" << endl << infoLog << endl;
+			std::cout << "InfoLog:" << std::endl << infoLog << std::endl;
 			delete [] infoLog;
 		}
 
@@ -78,7 +76,7 @@ namespace Utility
 			infoLog = new GLchar[infoLogLen];
 			// error check for fail to allocate memory omitted
 			glGetProgramInfoLog(prog,infoLogLen, &charsWritten, infoLog);
-			cout << "InfoLog:" << endl << infoLog << endl;
+			std::cout << "InfoLog:" << std::endl << infoLog << std::endl;
 			delete [] infoLog;
 		}
 	}
@@ -110,7 +108,7 @@ namespace Utility
 		glGetShaderiv(v, GL_COMPILE_STATUS, &compiled);
 		if (!compiled)
 		{
-			cout << "Vertex shader not compiled." << endl;
+			std::cout << "Vertex shader not compiled." << std::endl;
 			printShaderInfoLog(v);
 		} 
 
@@ -118,7 +116,7 @@ namespace Utility
 		glGetShaderiv(f, GL_COMPILE_STATUS, &compiled);
 		if (!compiled)
 		{
-			cout << "Fragment shader not compiled." << endl;
+			std::cout << "Fragment shader not compiled." << std::endl;
 			printShaderInfoLog(f);
 		} 
 		shaders_t out; out.vertex = v; out.fragment = f;
@@ -151,7 +149,7 @@ namespace Utility
 		glGetShaderiv(c, GL_COMPILE_STATUS, &compiled);
 		if (!compiled)
 		{
-			cout << "Compute shader not compiled." << endl;
+			std::cout << "Compute shader not compiled." << std::endl;
 			printShaderInfoLog(c);
 		} 
 
@@ -170,7 +168,7 @@ namespace Utility
 		glGetProgramiv(program,GL_LINK_STATUS, &linked);
 		if (!linked) 
 		{
-			cout << "Program did not link." << endl;
+			std::cout << "Program did not link." << std::endl;
 			printLinkInfoLog(program);
 		}
 	}
@@ -184,7 +182,7 @@ namespace Utility
 		glGetProgramiv(program,GL_LINK_STATUS, &linked);
 		if (!linked) 
 		{
-			cout << "Program did not link." << endl;
+			std::cout << "Program did not link." << std::endl;
 			printLinkInfoLog(program);
 		}
 	}
@@ -227,38 +225,38 @@ namespace Utility
 		switch (glError)
 		{
 		case GL_INVALID_VALUE:
-			cout << "\nInvalid value" << printString;
-			cin.get();
+			std::cout << "\nInvalid value" << printString;
+			std::cin.get();
 			exit(1);
 		case GL_INVALID_OPERATION:
-			cout << "\nInvalid operation" << printString;
-			cin.get();
+			std::cout << "\nInvalid operation" << printString;
+			std::cin.get();
 			exit(1);
 		case GL_INVALID_ENUM:
-			cout << "\nInvalid enum" << printString;
-			cin.get();
+			std::cout << "\nInvalid enum" << printString;
+			std::cin.get();
 			exit(1);
 		case GL_INVALID_FRAMEBUFFER_OPERATION:
-			cout << "\nThe framebuffer object is not complete" << printString;
-			cin.get();
+			std::cout << "\nThe framebuffer object is not complete" << printString;
+			std::cin.get();
 			exit(1);
 		case GL_OUT_OF_MEMORY:
-			cout << "\nThere is not enough memory left to execute the command" << printString;
-			cin.get();
+			std::cout << "\nThere is not enough memory left to execute the command" << printString;
+			std::cin.get();
 			exit(1);
 		case GL_STACK_UNDERFLOW:
-			cout << "\nAn attempt has been made to perform an operation that would cause an internal stack to underflow" << printString;
-			cin.get();
+			std::cout << "\nAn attempt has been made to perform an operation that would cause an internal stack to underflow" << printString;
+			std::cin.get();
 			exit(1);
 		case GL_STACK_OVERFLOW:
-			cout << "\nAn attempt has been made to perform an operation that would cause an internal stack to overflow" << printString;
-			cin.get();
+			std::cout << "\nAn attempt has been made to perform an operation that would cause an internal stack to overflow" << printString;
+			std::cin.get();
 			exit(1);
 		case GL_NO_ERROR:
 			break;
 		default:
-			cout << "\nError No.: " << glError << printString;
-			cin.get();
+			std::cout << "\nError No.: " << glError << printString;
+			std::cin.get();
 			exit(1);
 		}
 	}

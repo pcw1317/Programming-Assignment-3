@@ -79,7 +79,7 @@ float sampleGlowMask (vec2 texcoords)
 	return	texture (u_GlowMask, texcoords).x;
 }
 
-//Get a random normal vector  given a screen-space texture coordinate
+//Get a random normal std::vector  given a screen-space texture coordinate
 //Actually accesses a texture of random vectors
 vec3 getRandomNormal(vec2 texcoords) {
     ivec2 sz = textureSize(u_RandomNormaltex,0);

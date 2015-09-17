@@ -24,7 +24,6 @@
 
 #include "InstantRadiosity.h"
 
-using namespace std;
 using namespace glm;
 
 const float PI = 3.14159f;
@@ -53,7 +52,7 @@ mat4x4 get_mesh_world ();
 void initMesh() 
 {
 	mat4 modelMatrix = get_mesh_world ();
-    for(vector<tinyobj::shape_t>::iterator it = context->shapesBeginIter();
+    for(std::vector<tinyobj::shape_t>::iterator it = context->shapesBeginIter();
             it != context->shapesEndIter(); ++it)
     {
         tinyobj::shape_t shape = *it;
@@ -200,7 +199,7 @@ void draw_mesh_forward ()
     mat4 model = get_mesh_world();
 	mat4 view,lview, persp, lpersp;
 
-	view = context->pCam->get_view(); // Camera view Matrix
+	view = context->pCam.get_view(); // Camera view Matrix
 	lview = lig.get_light_view();
 	persp = perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
 	lpersp = perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
@@ -377,11 +376,11 @@ void motion(int x, int y)
 
     if (mouse_buttons & 1<<GLUT_RIGHT_BUTTON) 
 	{
-		context->pCam->adjust(0,0,dx,0,0,0);;
+		context->pCam.adjust(0,0,dx,0,0,0);;
     }
     else 
 	{
-		context->pCam->adjust(-dx*0.2f,-dy*0.2f,0,0,0,0);
+		context->pCam.adjust(-dx*0.2f,-dy*0.2f,0,0,0,0);
     }
 
     mouse_old_x = x;
@@ -396,25 +395,25 @@ void keyboard(unsigned char key, int x, int y)
     switch(key) 
 	{
         case(27):
-            exit(0.0);
+            std::exit(0);
             break;
         case('w'):
-            tz = 0.1;
+            tz = 0.1f;
             break;
         case('s'):
-            tz = -0.1;
+            tz = -0.1f;
             break;
         case('d'):
-            tx = -0.1;
+            tx = -0.1f;
             break;
         case('a'):
-            tx = 0.1;
+            tx = 0.1f;
             break;
         case('q'):
-            ty = 0.1;
+            ty = 0.1f;
             break;
         case('z'):
-            ty = -0.1;
+            ty = -0.1f;
             break;
         case('1'):
             display_type = DISPLAY_DEPTH;
@@ -458,7 +457,7 @@ void keyboard(unsigned char key, int x, int y)
 
     if (abs(tx) > 0 ||  abs(tz) > 0 || abs(ty) > 0) 
 	{
-		context->pCam->adjust(0,0,0,tx,ty,tz);
+		context->pCam.adjust(0,0,0,tx,ty,tz);
     }
 }
 
@@ -475,15 +474,21 @@ void initVPL ()
 
 int main (int argc, char* argv[])
 {
-	context = new SystemContext();
+	context = SystemContext::initialize(
+		Camera(glm::vec3(2.5, 5, 2),
+			glm::normalize(glm::vec3(0, -1, 0)),
+			glm::normalize(glm::vec3(0, 0, 1))),
+		glm::uvec2(1280, 720)
+		);
 
     bool loadedScene = false;
-    for(int i=1; i<argc; i++)
+
+    for(int i = 1; i < argc; i++)
 	{
-		string err = context->LoadObj(argv[i]);
+		std::string err = context->loadObj(argv[i]);
 		if (!err.empty())
 		{
-			cerr << err << endl;
+			std::cerr << err << std::endl;
 			return -1;
 		}
 		loadedScene = true;
@@ -491,7 +496,7 @@ int main (int argc, char* argv[])
 
     if(!loadedScene)
 	{
-        cout << "Usage: mesh=[obj file]" << endl; 
+        std::cout << "Usage: mesh=[obj file]" << std::endl; 
         std::cin.ignore( std::numeric_limits<std::streamsize>::max(), '\n' );
         return 0;
     }
@@ -500,7 +505,7 @@ int main (int argc, char* argv[])
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	context->viewport.x = 1280;
 	context->viewport.y = 720;
-	context->pCam->set_perspective
+	context->pCam.set_perspective
 		(
 		perspective
 			(
@@ -516,7 +521,7 @@ int main (int argc, char* argv[])
     if (GLEW_OK != err)
     {
         /* Problem: glewInit failed, something is seriously wrong. */
-        cout << "glewInit failed, aborting." << endl;
+        std::cout << "glewInit failed, aborting." << std::endl;
         exit (1);
     }
 
@@ -524,13 +529,13 @@ int main (int argc, char* argv[])
 	if (!GLEW_VERSION_4_3)
 		if (!GLEW_ARB_compute_shader)
 		{
-			cout << "This program requires either a Direct3D 11 or OpenGL 4.3 class graphics card." << endl
+			std::cout << "This program requires either a Direct3D 11 or OpenGL 4.3 class graphics card." << std::endl
 				 << "Press any key to terminate...";
-			cin.get ();
+			std::cin.get ();
 			exit (1);
 		}
-    cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << endl;
-    cout << "OpenGL version " << glGetString(GL_VERSION) << " supported" << endl;
+    std::cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
+    std::cout << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
 
     initNoise();
     initShader();
