@@ -47,6 +47,7 @@ protected:
 	std::map<unsigned int, Mesh *> geomIDToMesh;
 
 	glm::vec3 stratifiedSampling(glm::vec3 normalVec);
+	glm::vec3 stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax);
 };
 
 struct Ray
