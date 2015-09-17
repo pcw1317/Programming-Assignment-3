@@ -1,6 +1,6 @@
 #include "InstantRadiosity.h"
 
-void InstantRadiosityEmbree::addMesh(const Mesh & mesh)
+void InstantRadiosityEmbree::addMesh(Mesh &mesh)
 {
 	unsigned int geomID = rtcNewTriangleMesh(scene, RTC_GEOMETRY_DYNAMIC, 
 		mesh.indices.size() / 3, mesh.vertices.size());
@@ -23,6 +23,54 @@ void InstantRadiosityEmbree::addMesh(const Mesh & mesh)
 	rtcUnmapBuffer(scene, geomID, RTC_INDEX_BUFFER);
 
 	geomIDToMesh[geomID] = &mesh;
+}
+
+std::vector<LightData> InstantRadiosityEmbree::getVPLposPointLight(glm::vec3 pointLightPos, glm::vec3 lightNormalVec, unsigned int count)
+{
+	std::vector<LightData> res;
+
+	for (int rayCount = 0; rayCount < count; ++rayCount)
+	{
+		// should be a proper stratified quasirandom sampling direction
+		glm::vec3 randomDir = stratifiedSampling(lightNormalVec);
+
+		// Ray init.
+		RTCRay ray;
+		ray.org[0] = pointLightPos.x; ray.org[1] = pointLightPos.y; ray.org[2] = pointLightPos.z;
+		ray.dir[0] = randomDir.x; ray.dir[1] = randomDir.y; ray.dir[2] = randomDir.z;
+		ray.tnear = 0.f;
+		ray.tfar = INFINITY;
+		ray.geomID = RTC_INVALID_GEOMETRY_ID;
+		ray.primID = RTC_INVALID_GEOMETRY_ID;
+		ray.instID = RTC_INVALID_GEOMETRY_ID;
+		ray.mask = 0xFFFFFFFF;
+		ray.time = 0.f;
+
+		// Intersect!
+		rtcIntersect(scene, ray);
+
+		glm::vec3 rayOrg = glm::vec3(ray.org[0], ray.org[1], ray.org[2]);
+		glm::vec3 rayDir = glm::vec3(ray.dir[0], ray.dir[1], ray.dir[2]);
+		glm::vec3 rayNg = glm::vec3(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
+
+		// Made an intersection
+		if (ray.geomID != RTC_INVALID_GEOMETRY_ID)
+		{
+			LightData VPL;
+			VPL.position = rayOrg + rayDir * ray.tfar;
+			VPL.intensity = geomIDToMesh[ray.geomID]->color *	// diffuse only
+				glm::dot(rayNg, rayDir) *	// Lambertian cosine term
+				glm::pow((ray.tfar - ray.tnear), -2.f);	// d^-2
+			res.push_back(VPL);
+		}
+	}
+
+	return res;
+}
+
+glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec)
+{
+	// to be implemented
 }
 
 // Gives a random direction over the hemisphere above the surface with the normal "normal".
