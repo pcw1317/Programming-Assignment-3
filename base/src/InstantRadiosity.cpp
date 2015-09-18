@@ -80,7 +80,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, un
 		lightSample.position = lightPos;
 		lightSample.direction = light.direction;
 		lightSample.intensity = light.intensity;
-		std::vector<LightData> vpls = getVPLpos(light, 1);
+		std::vector<LightData> vpls = getVPLpos(lightSample, 1);
 		res.insert(res.end(), vpls.begin(), vpls.end());
 	}
 
