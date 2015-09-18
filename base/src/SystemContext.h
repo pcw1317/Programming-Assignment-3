@@ -6,6 +6,7 @@
 #include "tiny_obj_loader.h"
 #include "Camera.h"
 #include <exception>
+#include "InstantRadiosity.h"
 
 class DeviceMesh;
 
@@ -14,6 +15,7 @@ class SystemContext
 public:
 	~SystemContext()
 	{
+		delete irKernel;
 	}
 
 	void loadObj(char *path);
@@ -24,8 +26,12 @@ public:
 protected:
 	SystemContext(const Camera &pCam, const glm::uvec2 &viewport) :
 		pCam(pCam), viewport(viewport)
-	{}
+	{
+		irKernel = new InstantRadiosityEmbree();
+	}
 	std::vector<tinyobj::shape_t> shapes;
+	InstantRadiosityEmbree *irKernel;
+	AreaLightData light;
 	
 public:
 	std::vector<DeviceMesh> drawMeshes;

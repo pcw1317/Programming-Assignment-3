@@ -26,11 +26,19 @@ void SystemContext::initMesh()
 {
 	for (const auto &shape : shapes)
 	{
-		drawMeshes.push_back(DeviceMesh::deviceMeshFromMesh(Mesh::meshFromShape(shape)));
+		Mesh mesh = Mesh::meshFromShape(shape);
+		drawMeshes.push_back(DeviceMesh::deviceMeshFromMesh(mesh));
+		irKernel->addMesh(mesh);
 		if (shape.material.name == "light")
 		{
 			// process light
+			light.lightMax = mesh.getAABBmax();
+			light.lightMin = mesh.getAABBmin();
+			light.direction = glm::vec3(0, -1, 0);
+			light.intensity = glm::vec3(1, 1, 1);
 		}
 	}
+	irKernel->commitScene();
+	auto vpls = irKernel->getVPLpos(light, 1);
 }
 
