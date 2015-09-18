@@ -2,7 +2,7 @@
 
 void InstantRadiosityEmbree::addMesh(Mesh &mesh)
 {
-	unsigned int geomID = rtcNewTriangleMesh(scene, RTC_GEOMETRY_DYNAMIC, 
+	unsigned int geomID = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, 
 		mesh.indices.size() / 3, mesh.vertices.size());
 
 	glm::vec3 *vertices = (glm::vec3 *) rtcMapBuffer(scene, geomID, RTC_VERTEX_BUFFER);
