@@ -55,7 +55,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 
 		glm::vec3 rayOrg = glm::vec3(ray.org[0], ray.org[1], ray.org[2]);
 		glm::vec3 rayDir = glm::vec3(ray.dir[0], ray.dir[1], ray.dir[2]);
-		glm::vec3 rayNg = glm::vec3(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
+		glm::vec3 rayNg = glm::normalize(glm::vec3(ray.Ng[0], ray.Ng[1], ray.Ng[2]));
 
 		// Made an intersection
 		if (ray.geomID != RTC_INVALID_GEOMETRY_ID)
@@ -63,9 +63,10 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 			LightData VPL;
 			VPL.position = rayOrg + rayDir * ray.tfar;
 			VPL.intensity = light.intensity *	// light color
-				geomIDToMesh[ray.geomID]->color *	// diffuse only
-				glm::dot(rayNg, rayDir) *	// Lambertian cosine term
-				glm::pow((ray.tfar - ray.tnear), -2.f);	// d^-2
+				geomIDToMesh[ray.geomID].color *	// diffuse only
+				glm::abs(glm::dot(rayNg, rayDir)) *	// Lambertian cosine term
+				/*glm::pow((ray.tfar - ray.tnear), -2.f)*/1.f;	// d^-2
+			VPL.direction = rayNg;
 			res.push_back(VPL);
 		}
 	}
