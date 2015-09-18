@@ -1,24 +1,28 @@
 #include "InstantRadiosity.h"
 
+struct Vertex { float x, y, z, r; };
+struct Triangle { int v0, v1, v2; };
+
 void InstantRadiosityEmbree::addMesh(Mesh mesh)
 {
 	unsigned int geomID = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, 
 		mesh.indices.size() / 3, mesh.vertices.size());
 
-	glm::vec3 *vertices = (glm::vec3 *) rtcMapBuffer(scene, geomID, RTC_VERTEX_BUFFER);
+	Vertex *vertices = (Vertex *) rtcMapBuffer(scene, geomID, RTC_VERTEX_BUFFER);
 	unsigned int vertexIdx = 0;
 	for (auto vertex : mesh.vertices)
 	{
-		vertices[vertexIdx++] = glm::vec3(vertex);
+		vertices[vertexIdx].x = vertex.x; vertices[vertexIdx].y = vertex.y; vertices[vertexIdx].z = vertex.z;
+		vertexIdx++;
 	}
 	rtcUnmapBuffer(scene, geomID, RTC_VERTEX_BUFFER);
 
-	glm::ivec3 *triangles = (glm::ivec3 *) rtcMapBuffer(scene, geomID, RTC_INDEX_BUFFER);
+	Triangle *triangles = (Triangle *) rtcMapBuffer(scene, geomID, RTC_INDEX_BUFFER);
 	for (int triIdx = 0; triIdx < mesh.indices.size() / 3; ++triIdx)
 	{
-		triangles[triIdx].x = mesh.indices[triIdx * 3];
-		triangles[triIdx].y = mesh.indices[triIdx * 3 + 1];
-		triangles[triIdx].z = mesh.indices[triIdx * 3 + 2];
+		triangles[triIdx].v0 = mesh.indices[triIdx * 3];
+		triangles[triIdx].v1 = mesh.indices[triIdx * 3 + 2];
+		triangles[triIdx].v2 = mesh.indices[triIdx * 3 + 1];
 	}
 	rtcUnmapBuffer(scene, geomID, RTC_INDEX_BUFFER);
 
