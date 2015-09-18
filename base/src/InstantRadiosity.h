@@ -39,13 +39,13 @@ public:
 		rtcExit();
 	}
 
-	void addMesh(Mesh &mesh);
+	void addMesh(Mesh mesh);
 	std::vector<LightData> getVPLpos(LightData light, unsigned int count);
 	std::vector<LightData> getVPLpos(AreaLightData light, unsigned int count);
 	
 protected:
 	std::vector<unsigned int> geomIDs;
-	std::map<unsigned int, Mesh *> geomIDToMesh;
+	std::map<unsigned int, Mesh> geomIDToMesh;
 
 	glm::vec3 stratifiedSampling(glm::vec3 normalVec);
 	glm::vec3 stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax);

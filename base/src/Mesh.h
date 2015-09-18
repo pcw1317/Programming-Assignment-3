@@ -15,6 +15,26 @@ public:
 	glm::vec3 color;
 
 public:
+	Mesh()
+	{
+		AABBcalculated = false;
+		AABBmin = glm::vec3(1e300);
+		AABBmax = glm::vec3(-1e300);
+	}
+
+	Mesh(Mesh &mesh)
+	{
+		this->vertices = std::vector<glm::vec3>(mesh.vertices);
+		this->normals = std::vector<glm::vec3>(mesh.normals);
+		this->texcoords = std::vector<glm::vec2>(mesh.texcoords);
+		this->indices = std::vector<unsigned short>(mesh.indices);
+		this->texname = std::string(mesh.texname);
+		this->color = glm::vec3(mesh.color);
+		this->AABBcalculated = mesh.AABBcalculated;
+		this->AABBmin = mesh.AABBmin;
+		this->AABBmax = mesh.AABBmax;
+	}
+
 	Mesh(std::vector<glm::vec3> &vertices,
 		std::vector<glm::vec3> &normals,
 		std::vector<glm::vec2> &texcoords,

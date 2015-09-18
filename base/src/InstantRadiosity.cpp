@@ -1,6 +1,6 @@
 #include "InstantRadiosity.h"
 
-void InstantRadiosityEmbree::addMesh(Mesh &mesh)
+void InstantRadiosityEmbree::addMesh(Mesh mesh)
 {
 	unsigned int geomID = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, 
 		mesh.indices.size() / 3, mesh.vertices.size());
@@ -22,7 +22,7 @@ void InstantRadiosityEmbree::addMesh(Mesh &mesh)
 	}
 	rtcUnmapBuffer(scene, geomID, RTC_INDEX_BUFFER);
 
-	geomIDToMesh[geomID] = &mesh;
+	geomIDToMesh[geomID] = mesh;
 }
 
 std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsigned int count)
