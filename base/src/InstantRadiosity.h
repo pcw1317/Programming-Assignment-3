@@ -40,6 +40,7 @@ public:
 	}
 
 	void addMesh(Mesh mesh);
+	void commitScene() { rtcCommit(scene); }
 	std::vector<LightData> getVPLpos(LightData light, unsigned int count);
 	std::vector<LightData> getVPLpos(AreaLightData light, unsigned int count);
 	
