@@ -36,49 +36,46 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 
 	res.push_back(light);	// add itself also as the VPL
 
-	for (int rayIter = 0; rayIter < rayCount; ++rayIter)
+	if (recursionDepth > 0)
 	{
-		// should be a proper stratified quasirandom sampling direction
-		glm::vec3 randomDir = stratifiedSampling(light.direction, rayIter, rayCount);
-
-		// Ray init.
-		RTCRay ray;
-		ray.org[0] = light.position.x; ray.org[1] = light.position.y; ray.org[2] = light.position.z;
-		ray.dir[0] = randomDir.x; ray.dir[1] = randomDir.y; ray.dir[2] = randomDir.z;
-		ray.tnear = 0.f;
-		ray.tfar = INFINITY;
-		ray.geomID = RTC_INVALID_GEOMETRY_ID;
-		ray.primID = RTC_INVALID_GEOMETRY_ID;
-		ray.instID = RTC_INVALID_GEOMETRY_ID;
-		ray.mask = 0xFFFFFFFF;
-		ray.time = 0.f;
-
-		// Intersect!
-		rtcIntersect(scene, ray);
-
-		glm::vec3 rayOrg = glm::vec3(ray.org[0], ray.org[1], ray.org[2]);
-		glm::vec3 rayDir = glm::vec3(ray.dir[0], ray.dir[1], ray.dir[2]);
-		glm::vec3 rayNg = glm::normalize(glm::vec3(ray.Ng[0], ray.Ng[1], ray.Ng[2]));
-
-		// Made an intersection
-		if (ray.geomID != RTC_INVALID_GEOMETRY_ID)
+		for (int rayIter = 0; rayIter < rayCount; ++rayIter)
 		{
-			LightData VPL;
-			VPL.position = rayOrg + rayDir * ray.tfar;
-			VPL.intensity = light.intensity *	// light color
-				geomIDToMesh[ray.geomID].color *	// diffuse only
-				glm::abs(glm::dot(rayNg, rayDir)) *	// Lambertian cosine term
-				/*glm::pow((ray.tfar - ray.tnear), -2.f)*/1.f;	// d^-2
-			VPL.direction = rayNg;
-			// recurse to make a global illumination
-			if (recursionDepth > 0)
+			// should be a proper stratified quasirandom sampling direction
+			glm::vec3 randomDir = stratifiedSampling(light.direction, rayIter, rayCount);
+
+			// Ray init.
+			RTCRay ray;
+			ray.org[0] = light.position.x; ray.org[1] = light.position.y; ray.org[2] = light.position.z;
+			ray.dir[0] = randomDir.x; ray.dir[1] = randomDir.y; ray.dir[2] = randomDir.z;
+			ray.tnear = 0.f;
+			ray.tfar = INFINITY;
+			ray.geomID = RTC_INVALID_GEOMETRY_ID;
+			ray.primID = RTC_INVALID_GEOMETRY_ID;
+			ray.instID = RTC_INVALID_GEOMETRY_ID;
+			ray.mask = 0xFFFFFFFF;
+			ray.time = 0.f;
+
+			// Intersect!
+			rtcIntersect(scene, ray);
+
+			glm::vec3 rayOrg = glm::vec3(ray.org[0], ray.org[1], ray.org[2]);
+			glm::vec3 rayDir = glm::vec3(ray.dir[0], ray.dir[1], ray.dir[2]);
+			glm::vec3 rayNg = glm::normalize(glm::vec3(ray.Ng[0], ray.Ng[1], ray.Ng[2]));
+
+			// Made an intersection
+			if (ray.geomID != RTC_INVALID_GEOMETRY_ID)
 			{
+				LightData VPL;
+				VPL.position = rayOrg + rayDir * ray.tfar;
+				VPL.intensity = light.intensity *	// light color
+					geomIDToMesh[ray.geomID].color *	// diffuse only
+					glm::abs(glm::dot(rayNg, rayDir)) *	// Lambertian cosine term
+					glm::pow((ray.tfar - ray.tnear)/100.f, -2.f);	// d^-2
+				VPL.direction = rayNg;
+
+				// recurse to make a global illumination
 				std::vector<LightData> vpls = getVPLpos(VPL, rayCount, recursionDepth - 1);
 				res.insert(res.end(), vpls.begin(), vpls.end());
-			}
-			else
-			{
-				res.push_back(VPL);
 			}
 		}
 	}
