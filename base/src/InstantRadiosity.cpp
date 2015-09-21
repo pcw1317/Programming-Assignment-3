@@ -70,7 +70,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 				VPL.intensity = light.intensity *	// light color
 					geomIDToMesh[ray.geomID].color *	// diffuse only
 					glm::abs(glm::dot(rayNg, rayDir)) *	// Lambertian cosine term
-					glm::pow((ray.tfar - ray.tnear)/100.f, -2.f);	// d^-2
+					/*glm::pow((ray.tfar - ray.tnear), -2.f)*/*1.f;	// d^-2
 				VPL.direction = rayNg;
 
 				// recurse to make a global illumination
