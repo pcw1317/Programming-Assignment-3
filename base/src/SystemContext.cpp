@@ -40,7 +40,7 @@ void SystemContext::initMesh()
 		}
 	}
 	irKernel->commitScene();
-	auto vpls = irKernel->getVPLpos(light, 1, 1, 1);
+	auto vpls = irKernel->getVPLpos(light, 1, 100, 1);
 	VPLs.insert(VPLs.end(), vpls.begin(), vpls.end());
 }
 

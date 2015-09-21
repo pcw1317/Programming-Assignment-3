@@ -18,7 +18,7 @@ void main ()
 	vec3 outColor3 = vec3 (0.0, 0.0, 0.0);
 	vec4 lightVec = vec4 (0.0);
 
-	vec3 L = normalize(fs_ViewLightPos + u_vplDirection * 30 - fs_ViewPosition);
+	vec3 L = normalize(fs_ViewLightPos - fs_ViewPosition);
 	//float decay = clamp (1.0/length (lightVec), 0.0, 1.0);
 	float clampedDiffuseFactor = clamp(dot(fs_ViewNormal, L), 0.0, 1.0);
 	outColor3 += (fs_DiffColor * clampedDiffuseFactor) / u_numLights;

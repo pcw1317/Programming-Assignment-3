@@ -48,8 +48,11 @@ protected:
 	std::vector<unsigned int> geomIDs;
 	std::map<unsigned int, Mesh> geomIDToMesh;
 
-	glm::vec3 stratifiedSampling(glm::vec3 normalVec);
-	glm::vec3 stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax);
+	glm::vec3 stratifiedSampling(glm::vec3 normalVec, unsigned int current, unsigned int total);
+	glm::vec3 stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax, unsigned int current, unsigned int total);
+
+	float radicalInverse_VdC(unsigned int bits);
+	glm::vec2 hammersley2d(unsigned int i, unsigned int N);
 
 	static void error_handler(const RTCError code, const char* str)
 	{

@@ -1,4 +1,5 @@
 #include "InstantRadiosity.h"
+#include <glm/gtx/rotate_vector.hpp>
 
 struct Vertex { float x, y, z, r; };
 struct Triangle { int v0, v1, v2; };
@@ -38,7 +39,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 	for (int rayIter = 0; rayIter < rayCount; ++rayIter)
 	{
 		// should be a proper stratified quasirandom sampling direction
-		glm::vec3 randomDir = stratifiedSampling(light.direction);
+		glm::vec3 randomDir = stratifiedSampling(light.direction, rayIter, rayCount);
 
 		// Ray init.
 		RTCRay ray;
@@ -91,7 +92,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, un
 
 	for (int sampleIter = 0; sampleIter < sampleCount; ++sampleIter)
 	{
-		glm::vec3 lightPos = stratifiedSampling(light.lightMin, light.lightMax);
+		glm::vec3 lightPos = stratifiedSampling(light.lightMin, light.lightMax, sampleIter, sampleCount);
 		LightData lightSample;
 		lightSample.position = lightPos;
 		lightSample.direction = light.direction;
@@ -103,16 +104,43 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, un
 	return res;
 }
 
-glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec)
+const float PI = 3.14159265358979;
+
+glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec, unsigned int current, unsigned int total)
 {
-	// to be implemented
-	return normalVec;
+	glm::vec2 hammersley = hammersley2d(current, total);
+	float phi = hammersley.y * 2.0 * PI;
+	float cosTheta = 1.0 - hammersley.x;
+	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+	// point over hemisphere with normal vector (0, 0, 1)
+	glm::vec3 point = glm::vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+
+	glm::vec3 perpVec1 = glm::normalize(glm::cross(glm::vec3(0, -normalVec.z, normalVec.y), normalVec));
+	glm::vec3 perpVec2 = glm::cross(perpVec1, normalVec);
+	
+	return point.x * perpVec1 + point.y * perpVec2 + point.z * normalVec;
 }
 
-glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax)
+glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax, unsigned int current, unsigned int total)
 {
 	// to be implemented
-	return bbMin;
+	return (bbMin + bbMax) / 2.0f;
+}
+
+float InstantRadiosityEmbree::radicalInverse_VdC(unsigned int bits)
+{
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+glm::vec2 InstantRadiosityEmbree::hammersley2d(unsigned int i, unsigned int N)
+{
+	return glm::vec2(float(i) / float(N), radicalInverse_VdC(i));
 }
 
 // Gives a random direction over the hemisphere above the surface with the normal "normal".

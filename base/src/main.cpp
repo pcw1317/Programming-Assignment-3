@@ -162,6 +162,8 @@ glm::mat4 get_mesh_world()
     //return tilt_mat * scale_mat; //translate_mat;
 }
 
+int lightIdx = 0;
+
 void draw_mesh_forward () 
 {
     glUseProgram(forward_shading_prog);
@@ -187,7 +189,8 @@ void draw_mesh_forward ()
 	GLuint numLightsLoc = glGetUniformLocation(forward_shading_prog, "u_numLights");
 	GLuint diffColorLoc = glGetUniformLocation(forward_shading_prog, "u_DiffuseColor");
     
-	glUniform1i(numLightsLoc, context->VPLs.size());
+	//glUniform1i(numLightsLoc, context->VPLs.size());
+	glUniform1i(numLightsLoc, 1);
 	/*
 	if (indirectON)
 		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), nVPLs);
@@ -197,9 +200,9 @@ void draw_mesh_forward ()
 	glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE,glm::gtc::type_ptr::value_ptr(model));
     glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE,glm::gtc::type_ptr::value_ptr(view));
     glUniformMatrix4fv(perspMatLoc, 1, GL_FALSE, glm::gtc::type_ptr::value_ptr(persp));
-	glUniform3fv(vplPosLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[2].position));
-	glUniform3fv(vplIntLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[2].intensity));
-	glUniform3fv(vplDirLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[2].direction));
+	glUniform3fv(vplPosLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[lightIdx].position));
+	glUniform3fv(vplIntLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[lightIdx].intensity));
+	glUniform3fv(vplDirLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[lightIdx].direction));
 
     for(int i=0; i<context->drawMeshes.size(); i++)
 	{
@@ -430,6 +433,9 @@ void keyboard(unsigned char key, int x, int y)
 		case 'G':
 		case 'g':
 			indirectON = !indirectON;
+			break;
+		case ' ':
+			lightIdx = (lightIdx + 1) % context->VPLs.size();
 			break;
     }
 
