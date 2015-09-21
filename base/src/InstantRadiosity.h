@@ -41,8 +41,8 @@ public:
 
 	void addMesh(Mesh mesh);
 	void commitScene() { rtcCommit(scene); }
-	std::vector<LightData> getVPLpos(LightData light, unsigned int count);
-	std::vector<LightData> getVPLpos(AreaLightData light, unsigned int count);
+	std::vector<LightData> getVPLpos(LightData light, unsigned int count, unsigned int recursionDepth);
+	std::vector<LightData> getVPLpos(AreaLightData light, unsigned int sampleCount, unsigned int rayCount, unsigned int recursionDepth);
 	
 protected:
 	std::vector<unsigned int> geomIDs;
@@ -70,13 +70,6 @@ protected:
 		}
 		exit(1);
 	}
-};
-
-struct Ray
-{
-	glm::vec4 origin;
-	glm::vec4 direction;
-	glm::vec4 intensity;
 };
 
 glm::vec3 randDirHemisphere (glm::vec3 normal, float v1, float v2);

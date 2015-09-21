@@ -29,11 +29,13 @@ void InstantRadiosityEmbree::addMesh(Mesh mesh)
 	geomIDToMesh[geomID] = mesh;
 }
 
-std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsigned int count)
+std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsigned int rayCount, unsigned int recursionDepth)
 {
 	std::vector<LightData> res;
 
-	for (int rayCount = 0; rayCount < count; ++rayCount)
+	res.push_back(light);	// add itself also as the VPL
+
+	for (int rayIter = 0; rayIter < rayCount; ++rayIter)
 	{
 		// should be a proper stratified quasirandom sampling direction
 		glm::vec3 randomDir = stratifiedSampling(light.direction);
@@ -67,25 +69,34 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 				glm::abs(glm::dot(rayNg, rayDir)) *	// Lambertian cosine term
 				/*glm::pow((ray.tfar - ray.tnear), -2.f)*/1.f;	// d^-2
 			VPL.direction = rayNg;
-			res.push_back(VPL);
+			// recurse to make a global illumination
+			if (recursionDepth > 0)
+			{
+				std::vector<LightData> vpls = getVPLpos(VPL, rayCount, recursionDepth - 1);
+				res.insert(res.end(), vpls.begin(), vpls.end());
+			}
+			else
+			{
+				res.push_back(VPL);
+			}
 		}
 	}
 
 	return res;
 }
 
-std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, unsigned int count)
+std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, unsigned int sampleCount, unsigned int rayCount, unsigned int recursionDepth)
 {
 	std::vector<LightData> res;
 
-	for (int sampleCount = 0; sampleCount < count; ++sampleCount)
+	for (int sampleIter = 0; sampleIter < sampleCount; ++sampleIter)
 	{
 		glm::vec3 lightPos = stratifiedSampling(light.lightMin, light.lightMax);
 		LightData lightSample;
 		lightSample.position = lightPos;
 		lightSample.direction = light.direction;
 		lightSample.intensity = light.intensity;
-		std::vector<LightData> vpls = getVPLpos(lightSample, 1);
+		std::vector<LightData> vpls = getVPLpos(lightSample, rayCount, recursionDepth);
 		res.insert(res.end(), vpls.begin(), vpls.end());
 	}
 
@@ -101,7 +112,7 @@ glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec)
 glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax)
 {
 	// to be implemented
-	return (bbMin + bbMax) / 2.f;
+	return bbMin;
 }
 
 // Gives a random direction over the hemisphere above the surface with the normal "normal".

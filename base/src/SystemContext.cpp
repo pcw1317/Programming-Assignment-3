@@ -27,6 +27,7 @@ void SystemContext::initMesh()
 	for (const auto &shape : shapes)
 	{
 		Mesh mesh = Mesh::meshFromShape(shape);
+		std::cout << mesh.getAABBmax().x << " " << mesh.getAABBmax().y << " " << mesh.getAABBmax().z << ", " << mesh.getAABBmin().x << " " << mesh.getAABBmin().y <<  " " << mesh.getAABBmin().z << std::endl;
 		drawMeshes.push_back(DeviceMesh::deviceMeshFromMesh(mesh));
 		irKernel->addMesh(mesh);
 		if (shape.material.name == "light")
@@ -39,6 +40,7 @@ void SystemContext::initMesh()
 		}
 	}
 	irKernel->commitScene();
-	auto vpls = irKernel->getVPLpos(light, 1);
+	auto vpls = irKernel->getVPLpos(light, 1, 1, 1);
+	VPLs.insert(VPLs.end(), vpls.begin(), vpls.end());
 }
 

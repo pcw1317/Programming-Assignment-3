@@ -37,6 +37,7 @@ public:
 	std::vector<DeviceMesh> drawMeshes;
 	Camera pCam;
 	glm::uvec2 viewport;
+	std::vector<LightData> VPLs;
 
 public:
 	static std::unique_ptr<SystemContext> gContext;
