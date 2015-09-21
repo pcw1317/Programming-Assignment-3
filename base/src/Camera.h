@@ -6,22 +6,19 @@ class Camera
 {
 public:
 	Camera(glm::vec3 start_pos, glm::vec3 start_dir, glm::vec3 up) :
-		pos(start_pos.x, start_pos.y), z(start_pos.z), up(up),
-		start_dir(start_dir), start_left(glm::cross(start_dir, up)), rx(0), ry(0)
+		pos(start_pos), initUp(up), initLookingAtDir(glm::normalize(start_dir))
 	{ }
 
-	void adjust(float dx, float dy, float dz, float tx, float ty, float tz);
+	void rotate(glm::vec3 eulerAngleDelta);
+	void translate(glm::vec3 distance);
 	glm::mat4x4 get_view();
 	glm::mat4 get_perspective() { return perspectiveMat; }
 	void set_perspective(const glm::mat4 &persp) { perspectiveMat = persp; }
 
-	float rx;
-	float ry;
-	float z;
-	glm::vec2 pos;
-	glm::vec3 up;
-	glm::vec3 start_left;
-	glm::vec3 start_dir;
+	glm::vec3 eulerAngle;
+	glm::vec3 pos;
+	glm::vec3 initUp;
+	glm::vec3 initLookingAtDir;
 
 protected:
 	glm::mat4 perspectiveMat;

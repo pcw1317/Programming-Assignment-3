@@ -1,62 +1,27 @@
-#version 430 compatibility
+#version 330 core
 
-in vec3 fs_Normal;
-in vec4 fs_Position;
-in vec4 fs_LPosition;
-in vec3 fs_WNormal;
+in vec3 fs_ViewNormal;
+in vec3 fs_ViewPosition;
+in vec3 fs_ViewLightPos;
+in vec3 fs_LightIntensity;
+in vec3 fs_DiffColor;
 
 out vec4 outColor;
 
-uniform mat4 u_ViewInverse;
+uniform mat4 u_ViewMat;
 uniform sampler2D u_ShadowMap;
-uniform vec3 u_Color;
 uniform int u_numLights;
-uniform int u_numVPLs;
-
-struct	LightData
-{
-	vec4	position;
-	vec4	intensity;
-};
-
-layout (std430, binding=1) buffer vplInfo
-{
-	LightData vpl[];
-};
-
-layout (std430, binding=2) buffer lightInfo
-{
-	vec4	lights[];
-};
+uniform vec3 u_vplDirection;
 
 void main ()
 {
-	vec4 wPosition = u_ViewInverse * fs_Position;
-	vec3 lColor = vec3 (1.0);
 	vec3 outColor3 = vec3 (0.0, 0.0, 0.0);
 	vec4 lightVec = vec4 (0.0);
-	
-	for (int i = 0; i < u_numLights; ++i)
-	{
-		lightVec = vec4(lights [i].xyz, 1.0) - wPosition;
-		float decay = clamp (1.0/length (lightVec), 0.0, 1.0);
-		float clampedDiffuseFactor = clamp (dot (fs_WNormal, normalize(lightVec.xyz)), 0.0, 1.0);
-		outColor3 += (u_Color * clampedDiffuseFactor * decay);		
-	}
 
-	int count = 0;
-	for (int i = 0; i < u_numVPLs; ++i)
-	{
-		if (length (vpl [i].intensity.xyz) < 0.001)
-			continue;
-		lightVec = vpl [i].position - wPosition;
-		float clampedDiffuseFactor = clamp (dot (fs_WNormal, normalize (lightVec.xyz)), 0.0, 1.0);
-		float decay = clamp (1.0/length (lightVec), 0.0, 1.0);
-		outColor3 += (u_Color * clampedDiffuseFactor * vpl [i].intensity.xyz * vpl [i].intensity.w * decay);
-		++ count;
-	}
+	vec3 L = normalize(fs_ViewLightPos + u_vplDirection * 30 - fs_ViewPosition);
+	//float decay = clamp (1.0/length (lightVec), 0.0, 1.0);
+	float clampedDiffuseFactor = clamp(dot(fs_ViewNormal, L), 0.0, 1.0);
+	outColor3 += (fs_DiffColor * clampedDiffuseFactor) / u_numLights;
 
-	if (u_numVPLs > 0)
-		outColor3 /= 7.0;
 	outColor = vec4 (outColor3, 1.0);
 }

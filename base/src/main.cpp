@@ -14,6 +14,7 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/verbose_operator.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 #include <string>
@@ -37,7 +38,7 @@ int nVPLs = 512;
 int nLights = 0;
 int nBounces = 1;
 
-float FARP = 100.f;
+float FARP = 2000.f;
 float NEARP = 0.1f;
 
 std::list<LightData> lightList;
@@ -46,33 +47,6 @@ std::default_random_engine random_gen (time (NULL));
 SystemContext *context;
 
 glm::mat4 get_mesh_world ();
-
-void initMesh() 
-{
-	glm::mat4 modelMatrix = get_mesh_world ();
-    for(std::vector<tinyobj::shape_t>::iterator it = context->shapesBeginIter();
-            it != context->shapesEndIter(); ++it)
-    {
-        tinyobj::shape_t shape = *it;
-		if (shape.material.name == "light")
-		{
-			LightData	new_light;
-			new_light.position = glm::vec3 (3.5, -2.5, 4.5);//(mesh.vertices [0] + mesh.vertices [1] + mesh.vertices [2]) / 3.0f; 2.5, -2.5, 4.3) glm::vec3 (3.5, -2.5, 2.0)
-			new_light.intensity = glm::vec3(1.0f);
-			lightList.push_back (new_light);
-		}
-    }
-	nLights = lightList.size ();
-	if (nLights == 0)
-	{
-		LightData	new_light;
-		new_light.position = glm::vec3 (3.5, -2.0, 4.0);//(mesh.vertices [0] + mesh.vertices [1] + mesh.vertices [2]) / 3.0f; 2.5, -2.5, 4.3) glm::vec3 (3.5, -2.5, 2.0)
-		new_light.intensity = glm::vec3(1.0f);
-		lightList.push_back (new_light);
-		++nLights;
-	}
-
-}
 
 device_mesh2_t device_quad;
 void initQuad()
@@ -90,7 +64,6 @@ void initQuad()
     glGenVertexArrays(1, &(device_quad.vertex_array));
     glBindVertexArray(device_quad.vertex_array);
 
-
     //Allocate vbos for data
     glGenBuffers(1,&(device_quad.vbo_data));
     glGenBuffers(1,&(device_quad.vbo_indices));
@@ -98,6 +71,7 @@ void initQuad()
     //Upload vertex data
     glBindBuffer(GL_ARRAY_BUFFER, device_quad.vbo_data);
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+
     //Use of strided data, Array of Structures instead of Structures of Arrays
     glVertexAttribPointer(quad_attributes::POSITION, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
     glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(glm::vec3));
@@ -108,6 +82,7 @@ void initQuad()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, device_quad.vbo_indices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6*sizeof(GLushort), indices, GL_STATIC_DRAW);
     device_quad.num_indices = 6;
+
     //Unplug Vertex Array
     glBindVertexArray(0);
 }
@@ -118,7 +93,7 @@ void initShader()
 {
 #ifdef WIN32
 	// Common shaders
-	const char * pass_vert = "../../../res/shaders/pass.vert";
+	const char * pass_vert = "../../../res/shaders/forward_vert.glsl";
 	
 	// Forward shaders
 	const char * forward_frag = "../../../res/shaders/forward_frag.glsl";
@@ -134,7 +109,7 @@ void initShader()
 	forward_shading_prog = glCreateProgram();
 	glBindAttribLocation(forward_shading_prog, mesh_attributes::POSITION, "Position");
     glBindAttribLocation(forward_shading_prog, mesh_attributes::NORMAL, "Normal");
-    glBindAttribLocation(forward_shading_prog, mesh_attributes::TEXCOORD, "Texcoord");
+    //glBindAttribLocation(forward_shading_prog, mesh_attributes::TEXCOORD, "Texcoord");
 	utility::attachAndLinkProgram(forward_shading_prog, shaders);
 }
 
@@ -177,17 +152,14 @@ void setTextures()
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-Light lig(glm::vec3(3.5, -4.0, 5.3),
-        glm::normalize(glm::vec3(0,0,-1.0)),
-        glm::normalize(glm::vec3(0,1,0)));
-
 glm::mat4 get_mesh_world() 
 {
     glm::vec3 tilt(1.0f,0.0f,0.0f);
     //glm::mat4 translate_mat = glm::translate(glm::vec3(0.0f,.5f,0.0f));
     glm::mat4 tilt_mat = glm::rotate(glm::mat4(), 90.0f, tilt);
     glm::mat4 scale_mat = glm::scale(glm::mat4(), glm::vec3(0.01));
-    return tilt_mat * scale_mat; //translate_mat;
+	return glm::mat4(1.0);
+    //return tilt_mat * scale_mat; //translate_mat;
 }
 
 void draw_mesh_forward () 
@@ -198,7 +170,7 @@ void draw_mesh_forward ()
 	glm::mat4 view,lview, persp, lpersp;
 
 	view = context->pCam.get_view(); // Camera view Matrix
-	lview = lig.get_light_view();
+	//view = glm::gtx::transform2::lookAt(glm::vec3(0, 10, -10), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
 	lpersp = glm::perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
 
@@ -206,26 +178,32 @@ void draw_mesh_forward ()
     glm::mat4 inverse_transposed = glm::transpose(glm::inverse(view*model));
 	glm::mat4 view_inverse = glm::inverse (view);
 
-    glUniform1f(glGetUniformLocation(forward_shading_prog, "u_Far"), FARP);
-	glUniform1f(glGetUniformLocation(forward_shading_prog, "u_Near"), NEARP);
+	GLuint modelMatLoc = glGetUniformLocation(forward_shading_prog, "u_ModelMat");
+	GLuint viewMatLoc = glGetUniformLocation(forward_shading_prog, "u_ViewMat");
+	GLuint perspMatLoc = glGetUniformLocation(forward_shading_prog, "u_PerspMat");
+	GLuint vplPosLoc = glGetUniformLocation(forward_shading_prog, "u_vplPosition");
+	GLuint vplIntLoc = glGetUniformLocation(forward_shading_prog, "u_vplIntensity");
+	GLuint vplDirLoc = glGetUniformLocation(forward_shading_prog, "u_vplDirection");
+	GLuint numLightsLoc = glGetUniformLocation(forward_shading_prog, "u_numLights");
+	GLuint diffColorLoc = glGetUniformLocation(forward_shading_prog, "u_DiffuseColor");
     
-	glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numLights"), nLights);
+	glUniform1i(numLightsLoc, context->VPLs.size());
+	/*
 	if (indirectON)
 		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), nVPLs);
 	else
 		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), 0);
-
-	glUniformMatrix4fv(glGetUniformLocation(forward_shading_prog,"u_Model"),1,GL_FALSE,&model[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(forward_shading_prog,"u_View"),1,GL_FALSE,&view[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation(forward_shading_prog,"u_lView"),1,GL_FALSE,&lview[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(forward_shading_prog,"u_Persp"),1,GL_FALSE,&persp[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation(forward_shading_prog,"u_LPersp"),1,GL_FALSE,&lpersp[0][0]);
-    glUniformMatrix4fv(glGetUniformLocation(forward_shading_prog,"u_InvTrans") ,1,GL_FALSE,&inverse_transposed[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation(forward_shading_prog,"u_ViewInverse") ,1,GL_FALSE,&view_inverse[0][0]);
+	*/
+	glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE,glm::gtc::type_ptr::value_ptr(model));
+    glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE,glm::gtc::type_ptr::value_ptr(view));
+    glUniformMatrix4fv(perspMatLoc, 1, GL_FALSE, glm::gtc::type_ptr::value_ptr(persp));
+	glUniform3fv(vplPosLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[2].position));
+	glUniform3fv(vplIntLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[2].intensity));
+	glUniform3fv(vplDirLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[2].direction));
 
     for(int i=0; i<context->drawMeshes.size(); i++)
 	{
-        glUniform3fv(glGetUniformLocation(forward_shading_prog, "u_Color"), 1, &(context->drawMeshes[i].color[0]));
+        glUniform3fv(diffColorLoc, 1, &(context->drawMeshes[i].color[0]));
         glBindVertexArray(context->drawMeshes[i].vertex_array);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, context->drawMeshes[i].vbo_indices);
         
@@ -269,7 +247,7 @@ void updateDisplayText(char * disp)
             sprintf(disp, "Displaying Lights");
             break;
 		case DISPLAY_GLOWMASK:
-			sprintf (disp, "Displaying Glow Mask");
+			sprintf(disp, "Displaying Glow Mask");
 			break;
 		case(DISPLAY_SHADOW):
             sprintf(disp, "Displaying ShadowMap");
@@ -369,16 +347,17 @@ void mouse(int button, int state, int x, int y)
 void motion(int x, int y)
 {
     float dx, dy;
-    dx = (float)(x - mouse_old_x);
+    dx = -(float)(x - mouse_old_x);
     dy = (float)(y - mouse_old_y);
+	float sensitivity = 0.001f;
 
     if (mouse_buttons & 1<<GLUT_RIGHT_BUTTON) 
 	{
-		context->pCam.adjust(0,0,dx,0,0,0);;
+		//context->pCam.adjust(0,0,dx,0,0,0);;
     }
     else 
 	{
-		context->pCam.adjust(-dx*0.2f,-dy*0.2f,0,0,0,0);
+		context->pCam.rotate(glm::vec3(dy * sensitivity, 0, dx * sensitivity));
     }
 
     mouse_old_x = x;
@@ -390,28 +369,29 @@ void keyboard(unsigned char key, int x, int y)
     float tx = 0;
     float ty = 0;
     float tz = 0;
+	float speed = 10.f;
     switch(key) 
 	{
         case(27):
             std::exit(0);
             break;
-        case('w'):
-            tz = 0.1f;
+		case('w') :
+			tz = speed;
             break;
-        case('s'):
-            tz = -0.1f;
+		case('s') :
+			tz = -speed;
             break;
-        case('d'):
-            tx = -0.1f;
+		case('d') :
+			tx = -speed;
             break;
-        case('a'):
-            tx = 0.1f;
+		case('a') :
+			tx = speed;
             break;
-        case('q'):
-            ty = 0.1f;
+		case('q') :
+			ty = speed;
             break;
-        case('z'):
-            ty = -0.1f;
+		case('z') :
+			ty = -speed;
             break;
         case('1'):
             display_type = DISPLAY_DEPTH;
@@ -455,7 +435,7 @@ void keyboard(unsigned char key, int x, int y)
 
     if (abs(tx) > 0 ||  abs(tz) > 0 || abs(ty) > 0) 
 	{
-		context->pCam.adjust(0,0,0,tx,ty,tz);
+		context->pCam.translate(glm::vec3(tx, ty, tz));
     }
 }
 
@@ -473,9 +453,9 @@ void initVPL ()
 int main (int argc, char* argv[])
 {
 	context = SystemContext::initialize(
-		Camera(glm::vec3(2.5, 5, 2),
-			glm::normalize(glm::vec3(0, -1, 0)),
-			glm::normalize(glm::vec3(0, 0, 1))),
+		Camera(glm::vec3(300, 300, -500),
+			glm::normalize(glm::vec3(0, 0, 1)),
+			glm::normalize(glm::vec3(0, 1, 0))),
 		glm::uvec2(1280, 720)
 		);
 
@@ -518,11 +498,10 @@ int main (int argc, char* argv[])
         exit (1);
     }
 
-	// Make sure only OpenGL 4.3 or Direct3D 11 cards are allowed to run the program.
-	if (!GLEW_VERSION_4_3)
+	if (!GLEW_VERSION_3_3)
 		if (!GLEW_ARB_compute_shader)
 		{
-			std::cout << "This program requires either a Direct3D 11 or OpenGL 4.3 class graphics card." << std::endl
+			std::cout << "This program requires OpenGL 3.3 class graphics card." << std::endl
 				 << "Press any key to terminate...";
 			std::cin.get ();
 			exit (1);
@@ -530,10 +509,10 @@ int main (int argc, char* argv[])
     std::cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
     std::cout << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
 
-    initNoise();
+    //initNoise();
     initShader();
     init();
-    initMesh();
+    //initMesh();
 	context->initMesh();
 
     glutDisplayFunc(display);

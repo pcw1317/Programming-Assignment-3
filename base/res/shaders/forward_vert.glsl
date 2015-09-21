@@ -1,29 +1,30 @@
-#version 430 compatibility
+#version 330 core
 
-uniform mat4 u_Model;
-uniform mat4 u_View;
-uniform mat4 u_lView;
-uniform mat4 u_Persp;
-uniform mat4 u_LPersp;
-uniform mat4 u_InvTrans;
+uniform mat4 u_ModelMat;
+uniform mat4 u_ViewMat;
+uniform mat4 u_PerspMat;
+uniform vec3 u_vplPosition;
+uniform vec3 u_vplIntensity;
+uniform vec3 u_vplDirection;
+uniform vec3 u_DiffuseColor;
+uniform int u_numLights;
 
 in  vec3 Position;
 in  vec3 Normal;
 
-out vec3 fs_Normal;
-out vec4 fs_Position;
-out vec4 fs_LPosition;
+out vec3 fs_ViewNormal;
+out vec3 fs_ViewPosition;
+out vec3 fs_ViewLightPos;
+out vec3 fs_LightIntensity;
+out vec3 fs_DiffColor;
 
 void main(void) 
 {
-    fs_Normal = (u_InvTrans*vec4(Normal,0.0f)).xyz;
-    vec4 world = u_Model * vec4(Position, 1.0);
-	//For rendering from camera
-    vec4 camera = u_View * world;
-    fs_Position = camera;
-	//For rendering from Light
-	vec4 lcamera = u_lView * world;
-    fs_LPosition = u_LPersp * lcamera;
+    fs_ViewNormal = (u_ViewMat * u_ModelMat * vec4(Normal, 0.0)).xyz;
+    fs_ViewPosition = (u_ViewMat * u_ModelMat * vec4(Position, 1.0)).xyz;
+    fs_ViewLightPos = (u_ViewMat * u_ModelMat * vec4(u_vplPosition, 1.0)).xyz;
+    fs_LightIntensity = u_vplIntensity;
+    fs_DiffColor = u_DiffuseColor;
 
-    gl_Position = u_Persp * camera;
+    gl_Position = u_PerspMat * u_ViewMat * u_ModelMat * vec4(Position, 1.0);
 }
