@@ -34,7 +34,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 {
 	std::vector<LightData> res;
 
-	res.push_back(light);	// add itself also as the VPL
+	res.push_back(light);	// add itself as the VPL first
 
 	if (recursionDepth > 0)
 	{
@@ -55,6 +55,10 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 			ray.mask = 0xFFFFFFFF;
 			ray.time = 0.f;
 
+			ray.org[0] += ray.dir[0] * 0.01f;
+			ray.org[1] += ray.dir[1] * 0.01f;
+			ray.org[2] += ray.dir[2] * 0.01f;
+
 			// Intersect!
 			rtcIntersect(scene, ray);
 
@@ -69,8 +73,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 				VPL.position = rayOrg + rayDir * ray.tfar;
 				VPL.intensity = light.intensity *	// light color
 					geomIDToMesh[ray.geomID].color *	// diffuse only
-					glm::abs(glm::dot(rayNg, rayDir)) *	// Lambertian cosine term
-					/*glm::pow((ray.tfar - ray.tnear), -2.f)*/ 1.f;	// d^-2
+					glm::abs(glm::dot(rayNg, rayDir));	// Lambertian cosine term
 				VPL.direction = rayNg;
 
 				// recurse to make a global illumination
