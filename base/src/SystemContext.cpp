@@ -36,11 +36,11 @@ void SystemContext::initMesh()
 			light.lightMax = mesh.getAABBmax();
 			light.lightMin = mesh.getAABBmin();
 			light.direction = glm::vec3(0, -1, 0);
-			light.intensity = glm::vec3(1, 1, 1);
+			light.intensity = glm::vec3(1, 1, 1) * 10000.f;
 		}
 	}
 	irKernel->commitScene();
-	auto vpls = irKernel->getVPLpos(light, 1, 100, 1);
+	auto vpls = irKernel->getVPLpos(light, 10, 100, 2);
 	VPLs.insert(VPLs.end(), vpls.begin(), vpls.end());
 }
 
