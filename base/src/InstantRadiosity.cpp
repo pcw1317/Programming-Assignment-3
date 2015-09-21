@@ -4,6 +4,8 @@
 struct Vertex { float x, y, z, r; };
 struct Triangle { int v0, v1, v2; };
 
+const float PI = 3.14159265358979;
+
 void InstantRadiosityEmbree::addMesh(Mesh mesh)
 {
 	unsigned int geomID = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, 
@@ -73,7 +75,8 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 				VPL.position = rayOrg + rayDir * ray.tfar;
 				VPL.intensity = light.intensity *	// light color
 					geomIDToMesh[ray.geomID].color *	// diffuse only
-					glm::abs(glm::dot(rayNg, rayDir));	// Lambertian cosine term
+					glm::abs(glm::dot(rayNg, rayDir)) * 	// Lambertian cosine term
+					1.f / PI;	// divide by pi
 				VPL.direction = rayNg;
 
 				// recurse to make a global illumination
@@ -103,8 +106,6 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, un
 
 	return res;
 }
-
-const float PI = 3.14159265358979;
 
 glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec, unsigned int current, unsigned int total)
 {
