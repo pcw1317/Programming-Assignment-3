@@ -124,8 +124,9 @@ glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec, unsign
 
 glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax, unsigned int current, unsigned int total)
 {
-	// to be implemented
-	return (bbMin + bbMax) / 2.0f;
+	glm::vec2 hammersley = hammersley2d(current, total);
+	glm::vec3 samplePoint = glm::vec3(hammersley.x, 0, hammersley.y);
+	return bbMin + (bbMax - bbMin) * samplePoint;
 }
 
 float InstantRadiosityEmbree::radicalInverse_VdC(unsigned int bits)
