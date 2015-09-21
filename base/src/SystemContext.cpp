@@ -4,7 +4,7 @@
 #include "Mesh.h"
 #include "DeviceMesh.h"
 
-std::unique_ptr<SystemContext> SystemContext::gContext = nullptr;
+std::unique_ptr<SystemContext> SystemContext::global_context_ = nullptr;
 
 void SystemContext::loadObj(char *path)
 {

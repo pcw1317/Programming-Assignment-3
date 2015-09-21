@@ -8,6 +8,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerCommandArguments>mesh=..\..\..\res\cornell\cornell_box.obj</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerEnvironment>PATH=..\..\..\..\shared32\freeglut;..\..\..\..\shared32\glew\bin\Release\Win32;%PATH%</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>PATH=..\..\..\..\shared32\freeglut;..\..\..\..\shared32\glew\bin\Release\Win32;..\..\..\..\shared32\embree2\bin;%PATH%</LocalDebuggerEnvironment>
   </PropertyGroup>
 </Project>

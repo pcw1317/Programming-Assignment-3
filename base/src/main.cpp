@@ -196,6 +196,7 @@ void draw_mesh_forward ()
     glm::mat4 model = get_mesh_world();
 	glm::mat4 view,lview, persp, lpersp;
 
+
 	view = context->pCam.get_view(); // Camera view Matrix
 	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
 
@@ -539,8 +540,6 @@ int main (int argc, char* argv[])
 		glm::uvec2(1280, 720)
 		);
 
-    bool loadedScene = false;
-
 	if (argc > 1) {
 		try {
 			context->loadObj(argv[1]);
@@ -553,7 +552,7 @@ int main (int argc, char* argv[])
 	else
 	{
 		std::cerr << utility::sprintfpp("Usage: %s mesh=[obj file]\n", argv[0]);
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     glutInit(&argc, argv);

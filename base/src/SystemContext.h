@@ -39,13 +39,17 @@ public:
 	glm::uvec2 viewport;
 	std::vector<LightData> VPLs;
 
+protected:
+	static std::unique_ptr<SystemContext> global_context_;
 public:
-	static std::unique_ptr<SystemContext> gContext;
-
 	template<typename... Args>
 	static SystemContext* initialize(Args&&... args) {
-		assert(gContext.get() == nullptr);
-		gContext.reset(new SystemContext(std::forward<Args>(args)...));
-		return gContext.get();
+		assert(global_context_.get() == nullptr);
+		global_context_.reset(new SystemContext(std::forward<Args>(args)...));
+		return global_context_.get();
+	}
+	static SystemContext* get() {
+		assert(global_context_.get() != nullptr);
+		return global_context_.get();
 	}
 };
