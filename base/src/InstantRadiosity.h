@@ -53,7 +53,7 @@ protected:
 	std::map<unsigned int, Mesh> geomIDToMesh;
 	std::default_random_engine randGen;
 	std::uniform_real_distribution<float> uniformReal;
-	const float jitterEpsilon = 0.1f;
+	const float jitterEpsilon = 0.2f;
 
 	glm::vec3 stratifiedSampling(glm::vec3 normalVec, unsigned int current, unsigned int total);
 	glm::vec3 stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax, unsigned int current, unsigned int total);

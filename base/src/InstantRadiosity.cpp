@@ -56,10 +56,12 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 			ray.mask = 0xFFFFFFFF;
 			ray.time = 0.f;
 
+			float bias = 0.01f;
+
 			// add bias toward ray direction to avoid ray stucking
-			ray.org[0] += ray.dir[0] * 0.01f;
-			ray.org[1] += ray.dir[1] * 0.01f;
-			ray.org[2] += ray.dir[2] * 0.01f;
+			ray.org[0] += ray.dir[0] * bias;
+			ray.org[1] += ray.dir[1] * bias;
+			ray.org[2] += ray.dir[2] * bias;
 
 			// Intersect!
 			rtcIntersect(scene, ray);
@@ -107,9 +109,11 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(AreaLightData light, un
 	return res;
 }
 
+/* Hammersley points on hemisphere:
+ * http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html */
 glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec, unsigned int current, unsigned int total)
 {
-	glm::vec2 hammersley = hammersley2d(current, total);
+	glm::vec2 hammersley = hammersley2dJittered(current, total);
 	float phi = hammersley.y * 2.0 * PI;
 	float cosTheta = 1.0 - hammersley.x;
 	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
@@ -125,7 +129,7 @@ glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 normalVec, unsign
 
 glm::vec3 InstantRadiosityEmbree::stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax, unsigned int current, unsigned int total)
 {
-	glm::vec2 hammersley = hammersley2d(current, total);
+	glm::vec2 hammersley = hammersley2dJittered(current, total);
 	glm::vec3 samplePoint = glm::vec3(hammersley.x, 0, hammersley.y);
 	return bbMin + (bbMax - bbMin) * samplePoint;
 }

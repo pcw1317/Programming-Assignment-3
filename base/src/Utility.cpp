@@ -171,6 +171,9 @@ namespace utility
 			std::cout << "Program did not link." << std::endl;
 			printLinkInfoLog(program);
 		}
+
+		glDeleteShader(shaders.vertex);
+		glDeleteShader(shaders.fragment);
 	}
 
 	void attachAndLinkCSProgram(GLuint program, GLuint computeshader)

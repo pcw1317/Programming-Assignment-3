@@ -26,7 +26,6 @@
 #include "InstantRadiosity.h"
 
 const float PI = 3.14159f;
-const int MAX_LIGHTS_PER_TILE = 64;
 
 bool forwardR = true, indirectON = false, DOFEnabled = false, DOFDebug = false;
 
@@ -34,29 +33,23 @@ int mouse_buttons = 0;
 int mouse_old_x = 0, mouse_dof_x = 0;
 int mouse_old_y = 0, mouse_dof_y = 0;
 
-int nVPLs = 512;
-int nLights = 0;
-int nBounces = 1;
-
 float FARP = 2000.f;
 float NEARP = 0.1f;
-
-std::list<LightData> lightList;
-std::default_random_engine random_gen (time (NULL));
 
 SystemContext *context;
 
 glm::mat4 get_mesh_world ();
 
 device_mesh2_t device_quad;
+
 void initQuad()
 {
-    vertex2_t verts [] = {	{glm::vec3(-1,1,0),glm::vec2(0,1)},
-							{glm::vec3(-1,-1,0),glm::vec2(0,0)},
-							{glm::vec3(1,-1,0),glm::vec2(1,0)},
-							{glm::vec3(1,1,0),glm::vec2(1,1)}		};
+	vertex2_t verts[] = { {glm::vec3(-1, 1,0), glm::vec2(0,1)},
+						  {glm::vec3(-1,-1,0), glm::vec2(0,0)},
+						  {glm::vec3( 1,-1,0), glm::vec2(1,0)},
+						  {glm::vec3( 1, 1,0), glm::vec2(1,1)} };
 
-    unsigned short indices[] = { 0,1,2,0,2,3};
+    unsigned short indices[] = { 0, 1, 2, 0, 2, 3 };
 
     //Allocate vertex array
     //Vertex arrays encapsulate a set of generic vertex attributes and the buffers they are bound too
@@ -73,8 +66,8 @@ void initQuad()
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 
     //Use of strided data, Array of Structures instead of Structures of Arrays
-    glVertexAttribPointer(quad_attributes::POSITION, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
-    glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(glm::vec3));
+    glVertexAttribPointer(quad_attributes::POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex2_t), 0);
+    glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2_t), (void*)sizeof(glm::vec3));
     glEnableVertexAttribArray(quad_attributes::POSITION);
     glEnableVertexAttribArray(quad_attributes::TEXCOORD);
 
@@ -89,109 +82,136 @@ void initQuad()
 
 GLuint forward_shading_prog = 0;
 
-void initShader() 
+void shaderInit() 
 {
 #ifdef WIN32
-	// Common shaders
-	const char * pass_vert = "../../../res/shaders/forward_vert.glsl";
+	// Vertex shaders
+	const char *pass_vert = "../../../res/shaders/forward_vert.glsl";
+	const char *post_vert = "../../../res/shaders/post.vert";
 	
-	// Forward shaders
-	const char * forward_frag = "../../../res/shaders/forward_frag.glsl";
+	// Fragment shaders
+	const char *forward_frag = "../../../res/shaders/forward_frag.glsl";
+	const char *post_frag = "../../../res/shaders/post.frag";
 #else
 	// Common shaders
-	const char * pass_vert = "../res/shaders/pass.vert";
+	const char * pass_vert = "../res/shaders/forward_vert.vert";
 
 	// Forward shaders
 	const char * forward_frag = "../res/shaders/forward_frag.glsl";
 #endif
-
-	utility::shaders_t shaders = utility::loadShaders(pass_vert, forward_frag);
-	forward_shading_prog = glCreateProgram();
-	glBindAttribLocation(forward_shading_prog, mesh_attributes::POSITION, "Position");
-    glBindAttribLocation(forward_shading_prog, mesh_attributes::NORMAL, "Normal");
-    //glBindAttribLocation(forward_shading_prog, mesh_attributes::TEXCOORD, "Texcoord");
-	utility::attachAndLinkProgram(forward_shading_prog, shaders);
+	{
+		utility::shaders_t shaders = utility::loadShaders(pass_vert, forward_frag);
+		progs[PROG_SCENEDRAW] = glCreateProgram();
+		glBindAttribLocation(progs[PROG_SCENEDRAW], mesh_attributes::POSITION, "Position");
+		glBindAttribLocation(progs[PROG_SCENEDRAW], mesh_attributes::NORMAL, "Normal");
+		utility::attachAndLinkProgram(progs[PROG_SCENEDRAW], shaders);
+		glBindFragDataLocation(progs[PROG_SCENEDRAW], 0, "outColor");
+	}
+	{
+		utility::shaders_t shaders = utility::loadShaders(post_vert, post_frag);
+		progs[PROG_QUADDRAW] = glCreateProgram();
+		glBindAttribLocation(progs[PROG_QUADDRAW], quad_attributes::POSITION, "Position");
+		glBindAttribLocation(progs[PROG_QUADDRAW], quad_attributes::TEXCOORD, "Texcoord");
+		utility::attachAndLinkProgram(progs[PROG_QUADDRAW], shaders);
+		glBindFragDataLocation(progs[PROG_QUADDRAW], 0, "outColor");
+	}
 }
 
-GLuint random_normal_tex;
-GLuint random_scalar_tex;
-void initNoise() 
-{ 
-
-#ifdef WIN32
-	const char * rand_norm_png = "../../../res/random_normal.png";
-	const char * rand_png = "../../../res/random.png";
-#else
-	const char * rand_norm_png = "../res/random_normal.png";
-	const char * rand_png = "../res/random.png";
-#endif
-	random_normal_tex = (unsigned int)SOIL_load_OGL_texture(rand_norm_png,0,0,0);
-    glBindTexture(GL_TEXTURE_2D, random_normal_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-	random_scalar_tex = (unsigned int)SOIL_load_OGL_texture(rand_png,0,0,0);
-    glBindTexture(GL_TEXTURE_2D, random_scalar_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void setTextures() 
+void texInit()
 {
-    glBindTexture(GL_TEXTURE_2D,0); 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	int viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	int fbo_width, fbo_height;
+	fbo_width = viewport[2];
+	fbo_height = viewport[3];
 
-    //glColorMask(true,true,true,true);
-    glDisable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT);
+	glGenTextures(TEX_MAX, textures);
+	for (int i = 0; i < TEX_MAX; ++i)
+	{
+		glBindTexture(GL_TEXTURE_2D, textures[(Textures)i]);
+
+		// Set texture parameters for each texture
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+		if (formats[i] == GL_DEPTH_COMPONENT)
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+		}
+		if (formats[i] == GL_RED)
+		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		}
+
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormats[i],
+			fbo_width, fbo_height, 0, formats[i], types[i], NULL);
+	}
+
+	glBindTexture(GL_TEXTURE_2D, NULL);
+}
+
+void fboInit()
+{
+	glGenFramebuffers(FBO_MAX, fbo);
+
+	texInit();
+
+	GLenum status;
+
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_SCENEDRAW]);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
+		GL_TEXTURE_2D, textures[TEX_SCENE], 0);
+	status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	assert(status == GL_FRAMEBUFFER_COMPLETE);
+	{
+		GLuint attachments[1] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, attachments);
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_ACCUMULATE]);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+		GL_TEXTURE_2D, textures[TEX_ACCUM], 0);
+	status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	assert(status == GL_FRAMEBUFFER_COMPLETE);
+	{
+		GLuint attachments[1] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, attachments);
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 glm::mat4 get_mesh_world() 
 {
-    glm::vec3 tilt(1.0f,0.0f,0.0f);
-    //glm::mat4 translate_mat = glm::translate(glm::vec3(0.0f,.5f,0.0f));
-    glm::mat4 tilt_mat = glm::rotate(glm::mat4(), 90.0f, tilt);
-    glm::mat4 scale_mat = glm::scale(glm::mat4(), glm::vec3(0.01));
 	return glm::mat4(1.0);
-    //return tilt_mat * scale_mat; //translate_mat;
 }
 
 int lightIdx = 0;
 
 void draw_mesh_forward () 
 {
-    glUseProgram(forward_shading_prog);
-
     glm::mat4 model = get_mesh_world();
 	glm::mat4 view,lview, persp, lpersp;
 
 	view = context->pCam.get_view(); // Camera view Matrix
-	//view = glm::gtx::transform2::lookAt(glm::vec3(0, 10, -10), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
-	lpersp = glm::perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
 
-	//    persp = perspective(45.0f,(float)width/(float)height,NEARP,FARP);
-    glm::mat4 inverse_transposed = glm::transpose(glm::inverse(view*model));
-	glm::mat4 view_inverse = glm::inverse (view);
-
-	GLuint modelMatLoc = glGetUniformLocation(forward_shading_prog, "u_ModelMat");
-	GLuint viewMatLoc = glGetUniformLocation(forward_shading_prog, "u_ViewMat");
-	GLuint perspMatLoc = glGetUniformLocation(forward_shading_prog, "u_PerspMat");
-	GLuint vplPosLoc = glGetUniformLocation(forward_shading_prog, "u_vplPosition");
-	GLuint vplIntLoc = glGetUniformLocation(forward_shading_prog, "u_vplIntensity");
-	GLuint vplDirLoc = glGetUniformLocation(forward_shading_prog, "u_vplDirection");
-	GLuint numLightsLoc = glGetUniformLocation(forward_shading_prog, "u_numLights");
-	GLuint ambiColorLoc = glGetUniformLocation(forward_shading_prog, "u_AmbientColor");
-	GLuint diffColorLoc = glGetUniformLocation(forward_shading_prog, "u_DiffuseColor");
+	GLuint modelMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_ModelMat");
+	GLuint viewMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_ViewMat");
+	GLuint perspMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_PerspMat");
+	GLuint vplPosLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_vplPosition");
+	GLuint vplIntLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_vplIntensity");
+	GLuint vplDirLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_vplDirection");
+	GLuint numLightsLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_numLights");
+	GLuint ambiColorLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_AmbientColor");
+	GLuint diffColorLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_DiffuseColor");
+	GLuint textureLoc = glGetUniformLocation(progs[PROG_QUADDRAW], "u_Tex");
     
-	//glUniform1i(numLightsLoc, context->VPLs.size());
-	glUniform1i(numLightsLoc, 1);
+	glUniform1i(numLightsLoc, context->VPLs.size());
+	//glUniform1i(numLightsLoc, 1);
 	/*
 	if (indirectON)
 		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), nVPLs);
@@ -204,19 +224,72 @@ void draw_mesh_forward ()
 		glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, value_ptr(model));
 		glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, value_ptr(view));
 		glUniformMatrix4fv(perspMatLoc, 1, GL_FALSE, value_ptr(persp));
+		/*
 		glUniform3fv(vplPosLoc, 1, value_ptr(context->VPLs[lightIdx].position));
 		glUniform3fv(vplIntLoc, 1, value_ptr(context->VPLs[lightIdx].intensity));
 		glUniform3fv(vplDirLoc, 1, value_ptr(context->VPLs[lightIdx].direction));
+		*/
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_ACCUMULATE]);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		for (int i = 0; i < context->drawMeshes.size(); i++)
+		for (int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter)
 		{
-			glUniform3fv(diffColorLoc, 1, value_ptr(context->drawMeshes[i].diffuseColor));
-			glUniform3fv(ambiColorLoc, 1, value_ptr(context->drawMeshes[i].ambientColor));
-			glBindVertexArray(context->drawMeshes[i].vertex_array);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, context->drawMeshes[i].vbo_indices);
+			glUniform3fv(vplPosLoc, 1, value_ptr(context->VPLs[lightIter].position));
+			glUniform3fv(vplIntLoc, 1, value_ptr(context->VPLs[lightIter].intensity));
+			glUniform3fv(vplDirLoc, 1, value_ptr(context->VPLs[lightIter].direction));
 
-			glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT, 0);
+			glUseProgram(progs[PROG_SCENEDRAW]);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			for (int i = 0; i < context->drawMeshes.size(); i++)
+			{
+				glUniform3fv(diffColorLoc, 1, value_ptr(context->drawMeshes[i].diffuseColor));
+				glUniform3fv(ambiColorLoc, 1, value_ptr(context->drawMeshes[i].ambientColor));
+				glBindVertexArray(context->drawMeshes[i].vertex_array);
+				glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT, 0);
+			}
+
+			/*
+			glUseProgram(progs[PROG_QUADDRAW]);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			// bind accumulation texture
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textures[TEX_SCENE]);
+			glUniform1i(textureLoc, 0);
+			// draw screenquad with accumulation texture
+			glBindVertexArray(device_quad.vertex_array);
+			glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
+			*/
+			/*
+			glUseProgram(progs[PROG_QUADDRAW]);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_ACCUMULATE]);
+			// bind scenedraw texture
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textures[TEX_SCENE]);
+			glUniform1i(textureLoc, 0);
+			// enable blend
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			// draw screenquad with scenedraw texture
+			glBindVertexArray(device_quad.vertex_array);
+			glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
+			// disable blend
+			glDisable(GL_BLEND);
+			*/
 		}
+		/*
+		glUseProgram(progs[PROG_QUADDRAW]);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// bind accumulation texture
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textures[TEX_ACCUM]);
+		glUniform1i(textureLoc, 0);
+		// draw screenquad with accumulation texture
+		glBindVertexArray(device_quad.vertex_array);
+		glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
+		*/
 	}
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
@@ -427,7 +500,7 @@ void keyboard(unsigned char key, int x, int y)
             doIScissor ^= true;
             break;
         case('r'):
-            initShader();
+            shaderInit();
 			break;
 		case('7'):
             display_type = DISPLAY_SHADOW;
@@ -457,11 +530,6 @@ void init()
     glClearColor(0.0f, 0.0f, 0.0f,1.0f);
 }
 
-void initVPL ()
-{
-	// TODO
-}
-
 int main (int argc, char* argv[])
 {
 	context = SystemContext::initialize(
@@ -489,7 +557,8 @@ int main (int argc, char* argv[])
     }
 
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+    //glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+	glutInitDisplayString("rgba=32 double depth>=32");
 	context->pCam.set_perspective
 		(
 		glm::perspective
@@ -521,10 +590,10 @@ int main (int argc, char* argv[])
     std::cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
     std::cout << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
 
-    //initNoise();
-    initShader();
+    shaderInit();
     init();
-    //initMesh();
+	initQuad();
+	fboInit(); 
 	context->initMesh();
 
     glutDisplayFunc(display);

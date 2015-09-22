@@ -8,7 +8,38 @@
 
 #include "tiny_obj_loader.h"
 
+enum Textures
+{
+	TEX_SCENE,
+	TEX_ACCUM,
+	TEX_MAX
+};
+
+enum FBOs
+{
+	FBO_SCENEDRAW,
+	FBO_ACCUMULATE,
+	FBO_MAX
+};
+
+enum Progs
+{
+	PROG_SCENEDRAW,
+	PROG_QUADDRAW,
+	PROG_MAX
+};
+
+const GLenum internalFormats[TEX_MAX] =
+{ GL_RGBA32F, GL_RGBA32F };
+const GLenum formats[TEX_MAX] =
+{ GL_RGBA, GL_RGBA };
+const GLenum types[TEX_MAX] =
+{ GL_FLOAT, GL_FLOAT };
+
 std::vector<tinyobj::shape_t> shapes;
+GLuint textures[TEX_MAX];
+GLuint fbo[FBO_MAX];
+GLuint progs[PROG_MAX];
 
 typedef struct 
 {
@@ -33,7 +64,6 @@ namespace quad_attributes
         TEXCOORD
     };
 }
-
 enum Display 
 {
     DISPLAY_DEPTH = 0,
@@ -68,7 +98,7 @@ void reshape(int, int);
 //int main (int argc, char* argv[]);
 
 void    initNoise();
-void    initShader();
+void    shaderInit();
 void    initFBO(int width, int height);
 void    init();
 void    initMesh();
