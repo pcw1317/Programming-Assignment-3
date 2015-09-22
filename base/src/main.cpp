@@ -187,6 +187,7 @@ void draw_mesh_forward ()
 	GLuint vplIntLoc = glGetUniformLocation(forward_shading_prog, "u_vplIntensity");
 	GLuint vplDirLoc = glGetUniformLocation(forward_shading_prog, "u_vplDirection");
 	GLuint numLightsLoc = glGetUniformLocation(forward_shading_prog, "u_numLights");
+	GLuint ambiColorLoc = glGetUniformLocation(forward_shading_prog, "u_AmbientColor");
 	GLuint diffColorLoc = glGetUniformLocation(forward_shading_prog, "u_DiffuseColor");
     
 	//glUniform1i(numLightsLoc, context->VPLs.size());
@@ -197,21 +198,26 @@ void draw_mesh_forward ()
 	else
 		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), 0);
 	*/
-	glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE,glm::gtc::type_ptr::value_ptr(model));
-    glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE,glm::gtc::type_ptr::value_ptr(view));
-    glUniformMatrix4fv(perspMatLoc, 1, GL_FALSE, glm::gtc::type_ptr::value_ptr(persp));
-	glUniform3fv(vplPosLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[lightIdx].position));
-	glUniform3fv(vplIntLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[lightIdx].intensity));
-	glUniform3fv(vplDirLoc, 1, glm::gtc::type_ptr::value_ptr(context->VPLs[lightIdx].direction));
-
-    for(int i=0; i<context->drawMeshes.size(); i++)
 	{
-        glUniform3fv(diffColorLoc, 1, &(context->drawMeshes[i].color[0]));
-        glBindVertexArray(context->drawMeshes[i].vertex_array);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, context->drawMeshes[i].vbo_indices);
-        
-		glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT,0);
-    }
+		using namespace glm::gtc::type_ptr;
+
+		glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, value_ptr(model));
+		glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, value_ptr(view));
+		glUniformMatrix4fv(perspMatLoc, 1, GL_FALSE, value_ptr(persp));
+		glUniform3fv(vplPosLoc, 1, value_ptr(context->VPLs[lightIdx].position));
+		glUniform3fv(vplIntLoc, 1, value_ptr(context->VPLs[lightIdx].intensity));
+		glUniform3fv(vplDirLoc, 1, value_ptr(context->VPLs[lightIdx].direction));
+
+		for (int i = 0; i < context->drawMeshes.size(); i++)
+		{
+			glUniform3fv(diffColorLoc, 1, value_ptr(context->drawMeshes[i].diffuseColor));
+			glUniform3fv(ambiColorLoc, 1, value_ptr(context->drawMeshes[i].ambientColor));
+			glBindVertexArray(context->drawMeshes[i].vertex_array);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, context->drawMeshes[i].vbo_indices);
+
+			glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT, 0);
+		}
+	}
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 }

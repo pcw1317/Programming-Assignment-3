@@ -10,7 +10,8 @@ DeviceMesh DeviceMesh::deviceMeshFromMesh(const Mesh & mesh)
 	unsigned int vbo_vertices;
 	unsigned int vbo_normals;
 	unsigned int vbo_texcoords;
-	glm::vec3 color;
+	glm::vec3 ambientColor;
+	glm::vec3 diffuseColor;
 	std::string texname;
 
 	//Allocate vertex array
@@ -56,7 +57,8 @@ DeviceMesh DeviceMesh::deviceMeshFromMesh(const Mesh & mesh)
 	glBindVertexArray(0);
 
 	texname = mesh.texname;
-	color = mesh.color;
+	ambientColor = mesh.ambientColor;
+	diffuseColor = mesh.diffuseColor;
 
-	return DeviceMesh(vertex_array, vbo_indices, num_indices, vbo_vertices, vbo_normals, vbo_texcoords, color, texname);
+	return DeviceMesh(vertex_array, vbo_indices, num_indices, vbo_vertices, vbo_normals, vbo_texcoords, ambientColor, diffuseColor, texname);
 }

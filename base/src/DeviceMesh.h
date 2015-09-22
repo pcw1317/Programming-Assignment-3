@@ -24,7 +24,8 @@ public:
 	unsigned int vbo_vertices;
 	unsigned int vbo_normals;
 	unsigned int vbo_texcoords;
-	glm::vec3 color;
+	glm::vec3 ambientColor;
+	glm::vec3 diffuseColor;
 	std::string texname;
 
 public:
@@ -34,7 +35,8 @@ public:
 		unsigned int vbo_vtx,
 		unsigned int vbo_norm,
 		unsigned int vbo_uv,
-		glm::vec3 color,
+		glm::vec3 ambientColor,
+		glm::vec3 diffuseColor,
 		std::string texName)
 	{
 		vertex_array = vao;
@@ -43,7 +45,8 @@ public:
 		vbo_vertices = vbo_vtx;
 		vbo_normals = vbo_norm;
 		vbo_texcoords = vbo_uv;
-		this->color = color;
+		this->ambientColor = ambientColor;
+		this->diffuseColor = diffuseColor;
 		texname = texName;
 	}
 	static DeviceMesh deviceMeshFromMesh(const Mesh &mesh);

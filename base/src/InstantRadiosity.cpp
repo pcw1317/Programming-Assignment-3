@@ -74,7 +74,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 				LightData VPL;
 				VPL.position = rayOrg + rayDir * ray.tfar;
 				VPL.intensity = light.intensity *	// light color
-					geomIDToMesh[ray.geomID].color *	// diffuse only
+					geomIDToMesh[ray.geomID].diffuseColor *	// diffuse only
 					glm::abs(glm::dot(rayNg, rayDir)) * 	// Lambertian cosine term
 					1.f / PI;	// divide by pi
 				VPL.direction = rayNg;

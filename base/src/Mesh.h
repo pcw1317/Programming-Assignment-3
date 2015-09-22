@@ -12,7 +12,8 @@ public:
 	std::vector<glm::vec2> texcoords;
 	std::vector<unsigned short> indices;
 	std::string texname;
-	glm::vec3 color;
+	glm::vec3 ambientColor;
+	glm::vec3 diffuseColor;
 
 public:
 	Mesh()
@@ -29,7 +30,7 @@ public:
 		this->texcoords = std::vector<glm::vec2>(mesh.texcoords);
 		this->indices = std::vector<unsigned short>(mesh.indices);
 		this->texname = std::string(mesh.texname);
-		this->color = glm::vec3(mesh.color);
+		this->diffuseColor = glm::vec3(mesh.diffuseColor);
 		this->AABBcalculated = mesh.AABBcalculated;
 		this->AABBmin = mesh.AABBmin;
 		this->AABBmax = mesh.AABBmax;
@@ -40,14 +41,16 @@ public:
 		std::vector<glm::vec2> &texcoords,
 		std::vector<unsigned short> &indices,
 		std::string &texname,
-		glm::vec3 &color)
+		glm::vec3 &ambientColor,
+		glm::vec3 &diffuseColor)
 	{
 		this->vertices = std::vector<glm::vec3>(vertices);
 		this->normals = std::vector<glm::vec3>(normals);
 		this->texcoords = std::vector<glm::vec2>(texcoords);
 		this->indices = std::vector<unsigned short>(indices);
 		this->texname = std::string(texname);
-		this->color = glm::vec3(color);
+		this->ambientColor = glm::vec3(ambientColor);
+		this->diffuseColor = glm::vec3(diffuseColor);
 		AABBcalculated = false;
 		AABBmin = glm::vec3(1e300);
 		AABBmax = glm::vec3(-1e300);

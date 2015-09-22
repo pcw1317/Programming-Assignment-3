@@ -8,7 +8,8 @@ Mesh Mesh::meshFromShape(const tinyobj::shape_t & shape)
 	std::vector<glm::vec2> texcoords;
 	std::vector<unsigned short> indices;
 	std::string texname;
-	glm::vec3 color;
+	glm::vec3 ambientColor;
+	glm::vec3 diffuseColor;
 
 	{
 		int totalsize = shape.mesh.indices.size() / 3;
@@ -77,13 +78,16 @@ Mesh Mesh::meshFromShape(const tinyobj::shape_t & shape)
 				indices.push_back(point++);
 			}
 
-			color = glm::vec3(shape.material.diffuse[0],
+			ambientColor = glm::vec3(shape.material.ambient[0],
+				shape.material.ambient[1],
+				shape.material.ambient[2]);
+			diffuseColor = glm::vec3(shape.material.diffuse[0],
 				shape.material.diffuse[1],
 				shape.material.diffuse[2]);
-			texname = shape.material.name;//diffuse_texname;
+			texname = shape.material.name;
 			f = f + process;
 		}
 	}
 
-	return Mesh(vertices, normals, texcoords, indices, texname, color);
+	return Mesh(vertices, normals, texcoords, indices, texname, ambientColor, diffuseColor);
 }
