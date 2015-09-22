@@ -36,7 +36,7 @@ void SystemContext::initMesh()
 			light.lightMax = mesh.getAABBmax();
 			light.lightMin = mesh.getAABBmin();
 			light.direction = glm::vec3(0, -1, 0);
-			light.intensity = glm::vec3(1, 1, 1) * 10000.f;
+			light.intensity = glm::vec3(1, 1, 1) * 100000.f;
 		}
 	}
 	irKernel->commitScene();
