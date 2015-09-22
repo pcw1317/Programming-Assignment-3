@@ -5,6 +5,7 @@
 #include <embree2/rtcore_ray.h>
 #include "Mesh.h"
 #include <vector>
+#include <random>
 
 struct LightData
 {
@@ -28,6 +29,9 @@ class InstantRadiosityEmbree
 public:
 	InstantRadiosityEmbree()
 	{
+		randGen = std::default_random_engine();
+		uniformReal = std::uniform_real_distribution<float>(-jitterEpsilon, jitterEpsilon);
+
 		rtcInit(NULL);
 		rtcSetErrorFunction(InstantRadiosityEmbree::error_handler);
 		scene = rtcNewScene(RTC_SCENE_STATIC, RTC_INTERSECT1);
@@ -47,12 +51,16 @@ public:
 protected:
 	std::vector<unsigned int> geomIDs;
 	std::map<unsigned int, Mesh> geomIDToMesh;
+	std::default_random_engine randGen;
+	std::uniform_real_distribution<float> uniformReal;
+	const float jitterEpsilon = 0.1f;
 
 	glm::vec3 stratifiedSampling(glm::vec3 normalVec, unsigned int current, unsigned int total);
 	glm::vec3 stratifiedSampling(glm::vec3 bbMin, glm::vec3 bbMax, unsigned int current, unsigned int total);
 
 	float radicalInverse_VdC(unsigned int bits);
 	glm::vec2 hammersley2d(unsigned int i, unsigned int N);
+	glm::vec2 hammersley2dJittered(unsigned int i, unsigned int N);
 
 	static void error_handler(const RTCError code, const char* str)
 	{

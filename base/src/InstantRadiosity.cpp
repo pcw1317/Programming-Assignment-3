@@ -1,5 +1,4 @@
 #include "InstantRadiosity.h"
-#include <glm/gtx/rotate_vector.hpp>
 
 struct Vertex { float x, y, z, r; };
 struct Triangle { int v0, v1, v2; };
@@ -57,6 +56,7 @@ std::vector<LightData> InstantRadiosityEmbree::getVPLpos(LightData light, unsign
 			ray.mask = 0xFFFFFFFF;
 			ray.time = 0.f;
 
+			// add bias toward ray direction to avoid ray stucking
 			ray.org[0] += ray.dir[0] * 0.01f;
 			ray.org[1] += ray.dir[1] * 0.01f;
 			ray.org[2] += ray.dir[2] * 0.01f;
@@ -140,9 +140,16 @@ float InstantRadiosityEmbree::radicalInverse_VdC(unsigned int bits)
 	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
 }
 
+// produces a sample from 2D Hammersley sequence ([0-1], [0-1])
 glm::vec2 InstantRadiosityEmbree::hammersley2d(unsigned int i, unsigned int N)
 {
 	return glm::vec2(float(i) / float(N), radicalInverse_VdC(i));
+}
+
+// produces a jittered sample from 2D Hammersley sequence ([0-1], [0-1])
+glm::vec2 InstantRadiosityEmbree::hammersley2dJittered(unsigned int i, unsigned int N)
+{
+	return glm::clamp(hammersley2d(i, N) + glm::vec2(uniformReal(randGen), uniformReal(randGen)), glm::vec2(0, 0), glm::vec2(1, 1));
 }
 
 // Gives a random direction over the hemisphere above the surface with the normal "normal".
