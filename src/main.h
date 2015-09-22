@@ -6,7 +6,7 @@
 #include <vector>
 #include <cstring>
 
-#include "tiny_obj_loader.h"
+#include <tiny_obj_loader/tiny_obj_loader.h>
 
 enum Textures
 {

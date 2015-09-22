@@ -37,6 +37,8 @@ CPM_AddModule("gl_platform"
     GIT_REPOSITORY "https://github.com/iauns/cpm-gl-platform"
     GIT_TAG "1.3.7")
 
+SET(CPM_GLM_DEGREES 1)
+
 CPM_AddModule("glm"
 	GIT_REPOSITORY "https://github.com/iauns/cpm-glm"
     GIT_TAG "1.0.2"
@@ -63,7 +65,7 @@ ENDIF()
 
 FIND_LIBRARY(EMBREE_LIBRARY embree PATHS "${CONTRIB_DIR}/lib")
 file(GLOB CONTRIB_LIST
-  "${CONTRIB_DIR}/*"
+  "${CONTRIB_DIR}/lib/*"
 )
 file(COPY ${CONTRIB_LIST} DESTINATION "${PROJECT_BINARY_DIR}/")
 
@@ -81,6 +83,8 @@ file(GLOB_RECURSE SOURCE_LIST
 	"${PROJECT_SOURCE_DIR}/src/*.hh"
 	"${PROJECT_SOURCE_DIR}/src/*.hxx")
 
+#Resources
+FILE(COPY "${PROJECT_SOURCE_DIR}/res" DESTINATION "${PROJECT_BINARY_DIR}/")
+
 add_executable(${PROJECT_NAME} ${SOURCE_LIST})
 target_link_libraries(${PROJECT_NAME} ${CPM_LIBRARIES} ${EMBREE_LIBRARY})
-

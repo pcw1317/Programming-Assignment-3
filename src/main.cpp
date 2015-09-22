@@ -5,11 +5,9 @@
 #include "SystemContext.h"
 #include "DeviceMesh.h"	// ad hoc
 
-#include "SOIL.h"
-#include <GL/glut.h>
+#include <SOIL/SOIL.h>
+#include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/matrix_projection.hpp>
-#include <glm/gtc/matrix_operation.hpp>
 #include <glm/gtx/transform2.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -24,6 +22,8 @@
 #include <algorithm>
 
 #include "InstantRadiosity.h"
+
+GLFWwindow *window;
 
 const float PI = 3.14159f;
 
@@ -97,7 +97,7 @@ void shaderInit()
 	const char * pass_vert = "../res/shaders/forward_vert.vert";
 
 	// Forward shaders
-	const char * forward_frag = "../res/shaders/forward_frag.glsl";
+	const char * forward_frag = "res/shaders/forward_frag.glsl";
 #endif
 	{
 		utility::shaders_t shaders = utility::loadShaders(pass_vert, forward_frag);
@@ -351,7 +351,7 @@ void updateTitle()
     frame++;
 
     //get the current time
-    currenttime = glutGet(GLUT_ELAPSED_TIME);
+    currenttime = int(glfwGetTime() * 1000);
 
     //check if a second has passed
     if (currenttime - timebase > 1000) 
@@ -371,7 +371,7 @@ void updateTitle()
 
         sprintf(title, "CIS565 OpenGL Frame | %s FPS: %4.2f", disp, frame*1000.0/(currenttime-timebase));
         //sprintf(title, "CIS565 OpenGL Frame | %4.2f FPS", frame*1000.0/(currenttime-timebase));
-        glutSetWindowTitle(title);
+        glfwSetWindowTitle(window, title);
         timebase = currenttime;		
         frame = 0;
     }
@@ -393,12 +393,9 @@ void display(void)
 		RenderForward ();
 
     updateTitle();
-
-    glutPostRedisplay();
-    glutSwapBuffers();
 }
 
-void reshape(int w, int h)
+void reshape(GLFWwindow *window, int w, int h)
 {
     context->viewport.x = w;
     context->viewport.y = h;
@@ -406,74 +403,76 @@ void reshape(int w, int h)
     glViewport(0,0,(GLsizei)w,(GLsizei)h);
 }
 
-void mouse(int button, int state, int x, int y)
+void mouse(GLFWwindow *window, int button, int action, int mods)
 {
-    if (state == GLUT_DOWN) 
+	if (action == GLFW_PRESS)
 	{
-        mouse_buttons |= 1<<button;
-    } 
-	else if (state == GLUT_UP) 
+		mouse_buttons |= 1 << button;
+	}
+	else if (action == GLFW_RELEASE)
 	{
-        mouse_buttons = 0;
-    }
+		mouse_buttons = 0;
+	}
+	{
+		double x, y;
+		glfwGetCursorPos(window, &x, &y);
 
-    mouse_old_x = x;
-    mouse_old_y = y;
-
-	if (button == GLUT_RIGHT_BUTTON)
+		mouse_old_x = x;
+		mouse_old_y = y;
+	}
+	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
 		mouse_dof_x = mouse_old_x;
 		mouse_dof_y = mouse_old_y;
 	}
 }
 
-void motion(int x, int y)
+void motion(GLFWwindow *window, double x, double y)
 {
-    float dx, dy;
-    dx = -(float)(x - mouse_old_x);
-    dy = (float)(y - mouse_old_y);
+	float dx, dy;
+	dx = -(float)(x - mouse_old_x);
+	dy = (float)(y - mouse_old_y);
 	float sensitivity = 0.001f;
 
-    if (mouse_buttons & 1<<GLUT_RIGHT_BUTTON) 
+	if (mouse_buttons & 1 << GLFW_MOUSE_BUTTON_RIGHT)
 	{
 		//context->pCam.adjust(0,0,dx,0,0,0);;
-    }
-    else 
+	}
+	else if (mouse_buttons & 1 << GLFW_MOUSE_BUTTON_LEFT)
 	{
 		context->pCam.rotate(glm::vec3(dy * sensitivity, 0, dx * sensitivity));
-    }
-
-    mouse_old_x = x;
-    mouse_old_y = y;
+	}
 }
 
-void keyboard(unsigned char key, int x, int y) 
+void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     float tx = 0;
     float ty = 0;
     float tz = 0;
+	if (action == GLFW_RELEASE) //no need to process key up events
+		return;
 	float speed = 10.f;
     switch(key) 
 	{
         case(27):
             std::exit(0);
             break;
-		case('w') :
+		case('W') :
 			tz = speed;
             break;
-		case('s') :
+		case('S') :
 			tz = -speed;
             break;
-		case('d') :
+		case('D') :
 			tx = -speed;
             break;
-		case('a') :
+		case('A') :
 			tx = speed;
             break;
-		case('q') :
+		case('Q') :
 			ty = speed;
             break;
-		case('z') :
+		case('Z') :
 			ty = -speed;
             break;
         case('1'):
@@ -497,21 +496,19 @@ void keyboard(unsigned char key, int x, int y)
         case('0'):
             display_type = DISPLAY_TOTAL;
             break;
-        case('x'):
+        case('X'):
             doIScissor ^= true;
             break;
-        case('r'):
+        case('R'):
             shaderInit();
 			break;
 		case('7'):
             display_type = DISPLAY_SHADOW;
 			break;
-		case 'f':
 		case 'F':
 			forwardR = !forwardR;
 			break;
 		case 'G':
-		case 'g':
 			indirectON = !indirectON;
 			break;
 		case ' ':
@@ -531,8 +528,8 @@ void init()
     glClearColor(0.0f, 0.0f, 0.0f,1.0f);
 }
 
-int main (int argc, char* argv[])
-{
+int main (int argc, char* argv[]) {
+	//Initialize our system context
 	context = SystemContext::initialize(
 		Camera(glm::vec3(300, 300, -500),
 			glm::normalize(glm::vec3(0, 0, 1)),
@@ -540,6 +537,18 @@ int main (int argc, char* argv[])
 		glm::uvec2(1280, 720)
 		);
 
+	context->pCam.set_perspective
+		(
+			glm::perspective
+			(
+				45.0f,
+				(float)context->viewport.x / (float)context->viewport.y,
+				NEARP,
+				FARP
+				)
+			);
+	
+	//Load mesh into memory
 	if (argc > 1) {
 		try {
 			context->loadObj(argv[1]);
@@ -549,58 +558,63 @@ int main (int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 	}
-	else
-	{
+	else {
 		std::cerr << utility::sprintfpp("Usage: %s mesh=[obj file]\n", argv[0]);
         return EXIT_SUCCESS;
     }
 
-    glutInit(&argc, argv);
-    //glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	glutInitDisplayString("rgba=32 double depth>=32");
-	context->pCam.set_perspective
-		(
-		glm::perspective
-			(
-			45.0f,
-			(float)context->viewport.x/(float)context->viewport.y,
-			NEARP,
-			FARP
-			)
-		);
-	glutInitWindowSize(context->viewport.x, context->viewport.y);
-    glutCreateWindow("CIS565 OpenGL Frame");
-    GLenum err = glewInit();
-    if (GLEW_OK != err)
-    {
-        /* Problem: glewInit failed, something is seriously wrong. */
-        std::cout << "glewInit failed, aborting." << std::endl;
-        exit (1);
-    }
+	//Initialize GLFW & GLEW
+	{
+		if (!glfwInit())
+			return EXIT_FAILURE;
 
-	if (!GLEW_VERSION_3_3)
-		if (!GLEW_ARB_compute_shader)
+		if (!(window = glfwCreateWindow(context->viewport.x, context->viewport.y, "InstantRadiosity", NULL, NULL)))
 		{
-			std::cout << "This program requires OpenGL 3.3 class graphics card." << std::endl
-				 << "Press any key to terminate...";
-			std::cin.get ();
-			exit (1);
+			glfwTerminate();
+			return EXIT_FAILURE;
 		}
-    std::cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
-    std::cout << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
+		glfwMakeContextCurrent(window);
 
-    shaderInit();
+		if (glewInit() != GLEW_OK)
+		{
+			/* Problem: glewInit failed, something is seriously wrong. */
+			std::cerr << "glewInit failed, aborting." << std::endl;
+			exit(1);
+		}
+
+		// Make sure OpenGL version.
+		if (!GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader)
+		{
+			std::cerr << "This program requires OpenGL 3.3 class graphics card." << std::endl;
+			return EXIT_FAILURE;
+		}
+
+		std::cerr << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
+		std::cerr << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
+
+		//callback
+		glfwSetWindowSizeCallback(window, reshape);
+		glfwSetKeyCallback(window, keyboard);
+		glfwSetCursorPosCallback(window, motion);
+		glfwSetMouseButtonCallback(window, mouse);
+	}
+	
+    //initNoise();
+    initShader();
     init();
 	initQuad();
 	fboInit(); 
 	context->initMesh();
 
-    glutDisplayFunc(display);
-    glutReshapeFunc(reshape);	
-    glutKeyboardFunc(keyboard);
-    glutMouseFunc(mouse);
-    glutMotionFunc(motion);
+	while (!glfwWindowShouldClose(window)) {
+		display();
 
-    glutMainLoop();
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	glfwTerminate();
+
+    
     return EXIT_SUCCESS;
 }

@@ -3,7 +3,7 @@
 #include <vector>
 #include <cassert>
 #include <memory>
-#include "tiny_obj_loader.h"
+#include <tiny_obj_loader/tiny_obj_loader.h>
 #include "Camera.h"
 #include <exception>
 #include "InstantRadiosity.h"
