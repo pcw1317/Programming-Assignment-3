@@ -4,7 +4,7 @@
 #include <cassert>
 #include <memory>
 #include <tiny_obj_loader/tiny_obj_loader.h>
-#include "Camera.h"
+#include "camera.h"
 #include <exception>
 #include "InstantRadiosity.h"
 
@@ -12,7 +12,7 @@
 #include <GLFW/glfw3.h>
 #include "gl_snippets.h"
 
-class DeviceMesh;
+class device_mesh_t;
 
 class system_context {
   public:
@@ -25,16 +25,16 @@ class system_context {
     void load_mesh(const char *path);
 
   protected:
-    system_context(const Camera &pCam, const glm::uvec2 &viewport) :
+    system_context(const camera_t &pCam, const glm::uvec2 &viewport) :
         pCam(pCam), viewport(viewport), shown_vpl_index(0), irKernel(new InstantRadiosityEmbree()) {
     }
     std::unique_ptr<InstantRadiosityEmbree> irKernel;
     AreaLightData light;
 
   public:
-    std::vector<DeviceMesh> drawMeshes;
+    std::vector<device_mesh_t> drawMeshes;
     GLFWwindow *window;
-    Camera pCam;
+    camera_t pCam;
     glm::uvec2 viewport;
     std::vector<LightData> VPLs;
 

@@ -3,7 +3,7 @@
 #include "Utility.h"
 #include "Light.h"
 #include "system_context.h"
-#include "DeviceMesh.h"
+#include "device_mesh.h"
 #include "gl_snippets.h"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -28,15 +28,15 @@ int mouse_old_y = 0, mouse_dof_y = 0;
 
 system_context *context;
 
-glm::mat4 get_mesh_world ();
+glm::mat4 get_mesh_world();
 
 device_mesh2_t device_quad;
 
 void init_quad() {
-    vertex2_t verts[] = { {glm::vec3(-1, 1,0), glm::vec2(0,1)},
-        {glm::vec3(-1,-1,0), glm::vec2(0,0)},
-        {glm::vec3( 1,-1,0), glm::vec2(1,0)},
-        {glm::vec3( 1, 1,0), glm::vec2(1,1)}
+    vertex2_t verts[] = { {glm::vec3(-1, 1, 0), glm::vec2(0, 1)},
+        {glm::vec3(-1, -1, 0), glm::vec2(0, 0)},
+        {glm::vec3(1, -1, 0), glm::vec2(1, 0)},
+        {glm::vec3(1, 1, 0), glm::vec2(1, 1)}
     };
 
     unsigned short indices[] = { 0, 1, 2, 0, 2, 3 };
@@ -86,9 +86,9 @@ void update_title() {
     ++frame;
     double time_now = glfwGetTime();
 
-    if (time_now - time_base > 1.0) {//update title if a second passes
+    if(time_now - time_base > 1.0) { //update title if a second passes
         const char *displaying;
-        switch (display_type) {
+        switch(display_type) {
         case(DISPLAY_DEPTH) :
             displaying = "Depth";
             break;
@@ -127,12 +127,12 @@ void update_title() {
     }
 }
 
-void render_forward () {
+void render_forward() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
     glm::mat4 model = get_mesh_world();
-    glm::mat4 view = context->pCam.get_view(); // Camera view Matrix
+    glm::mat4 view = context->pCam.get_view(); // camera_t view Matrix
     glm::mat4 perspective = context->pCam.get_perspective();
 
     context->gls_programs[kGlsProgramSceneDraw].bind();
@@ -150,14 +150,14 @@ void render_forward () {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        for (int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter) {
+        for(int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter) {
             context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(3 /*u_vplPosition*/, context->VPLs[lightIter].position, context->VPLs[lightIter].intensity, context->VPLs[lightIter].direction);
 
             context->gls_programs[kGlsProgramSceneDraw].bind();
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            for (int i = 0; i < context->drawMeshes.size(); i++) {
-                context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(7 /*u_AmbientColor*/, context->drawMeshes[i].ambientColor, context->drawMeshes[i].diffuseColor);
+            for(int i = 0; i < context->drawMeshes.size(); i++) {
+                context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(7 /*u_AmbientColor*/, context->drawMeshes[i].ambient_color, context->drawMeshes[i].diffuse_color);
                 glBindVertexArray(context->drawMeshes[i].vertex_array);
                 glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT, 0);
             }
@@ -207,9 +207,9 @@ void render_forward () {
 }
 
 void window_callback_mouse_button(GLFWwindow *window, int button, int action, int mods) {
-    if (action == GLFW_PRESS) {
+    if(action == GLFW_PRESS) {
         mouse_buttons |= 1 << button;
-    } else if (action == GLFW_RELEASE) {
+    } else if(action == GLFW_RELEASE) {
         mouse_buttons = 0;
     }
     {
@@ -219,7 +219,7 @@ void window_callback_mouse_button(GLFWwindow *window, int button, int action, in
         mouse_old_x = int(x);
         mouse_old_y = int(y);
     }
-    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+    if(button == GLFW_MOUSE_BUTTON_RIGHT) {
         mouse_dof_x = mouse_old_x;
         mouse_dof_y = mouse_old_y;
     }
@@ -231,9 +231,9 @@ void window_callback_cursor_pos(GLFWwindow *window, double x, double y) {
     dy = (float)(y - mouse_old_y);
     float sensitivity = 0.001f;
 
-    if (mouse_buttons & 1 << GLFW_MOUSE_BUTTON_RIGHT) {
+    if(mouse_buttons & 1 << GLFW_MOUSE_BUTTON_RIGHT) {
         //context->pCam.adjust(0,0,dx,0,0,0);;
-    } else if (mouse_buttons & 1 << GLFW_MOUSE_BUTTON_LEFT) {
+    } else if(mouse_buttons & 1 << GLFW_MOUSE_BUTTON_LEFT) {
         context->pCam.rotate(glm::vec3(dy * sensitivity, 0, dx * sensitivity));
     }
 
@@ -245,7 +245,7 @@ void window_callback_key(GLFWwindow *window, int key, int scancode, int action, 
     float tx = 0;
     float ty = 0;
     float tz = 0;
-    if (action == GLFW_RELEASE) //no need to process key up events
+    if(action == GLFW_RELEASE)  //no need to process key up events
         return;
     float speed = 10.f;
     switch(key) {
@@ -299,7 +299,7 @@ void window_callback_key(GLFWwindow *window, int key, int scancode, int action, 
         break;
     }
 
-    if (abs(tx) > 0 ||  abs(tz) > 0 || abs(ty) > 0) {
+    if(abs(tx) > 0 ||  abs(tz) > 0 || abs(ty) > 0) {
         context->pCam.translate(glm::vec3(tx, ty, tz));
     }
 }
@@ -307,7 +307,7 @@ void window_callback_key(GLFWwindow *window, int key, int scancode, int action, 
 void init() {
     //GL parameter initialization
     glEnable(GL_DEPTH_TEST);
-    glClearColor(0.0f, 0.0f, 0.0f,1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     //context gls object initialization
     context->gls_programs.resize(kGlsProgramMax);
@@ -330,22 +330,22 @@ namespace {
 class opengl_initializer_t {
   public:
     opengl_initializer_t();
-    opengl_initializer_t(const opengl_initializer_t&) = delete;
-    opengl_initializer_t& operator=(const opengl_initializer_t&) = delete;
+    opengl_initializer_t(const opengl_initializer_t &) = delete;
+    opengl_initializer_t &operator=(const opengl_initializer_t &) = delete;
     ~opengl_initializer_t();
-    opengl_initializer_t(opengl_initializer_t&&) = delete;
-    opengl_initializer_t& operator=(opengl_initializer_t&&) = delete;
+    opengl_initializer_t(opengl_initializer_t &&) = delete;
+    opengl_initializer_t &operator=(opengl_initializer_t &&) = delete;
 };
 
 opengl_initializer_t::opengl_initializer_t() {
     //initialize glfw
-    if (!glfwInit())
+    if(!glfwInit())
         throw std::runtime_error("glfwInit() failed");
 
     try {
         //create window
         glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-        if (!(context->window = glfwCreateWindow(context->viewport.x, context->viewport.y, "InstantRadiosity", NULL, NULL)))
+        if(!(context->window = glfwCreateWindow(context->viewport.x, context->viewport.y, "InstantRadiosity", NULL, NULL)))
             throw std::runtime_error("glfw window creation failed");
         glfwMakeContextCurrent(context->window);
 
@@ -355,18 +355,18 @@ opengl_initializer_t::opengl_initializer_t() {
         glfwSetMouseButtonCallback(context->window, window_callback_mouse_button);
 
         //initialize glew
-        if (glewInit() != GLEW_OK)
+        if(glewInit() != GLEW_OK)
             throw std::runtime_error("glewInit() failed");
 
         //check version requirement
         //TODO: update correct requirement later
-        if (!GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader)
+        if(!GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader)
             throw std::runtime_error("This program requires OpenGL 3.3 class graphics card.");
         else {
             std::cerr << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
             std::cerr << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
         }
-    } catch (...) {
+    } catch(...) {
         glfwTerminate();
         throw;
     }
@@ -375,11 +375,11 @@ opengl_initializer_t::~opengl_initializer_t() {
     glfwTerminate();
 }
 }
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     //Step 0: Initialize our system context
     {
         glm::uvec2 viewport(1280, 720);
-        Camera default_camera(
+        camera_t default_camera(
             glm::vec3(300, 300, -500),
             glm::vec3(0, 0, 1),
             glm::vec3(0, 1, 0),
@@ -403,26 +403,24 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-	//Step 2: Load mesh into memory
-	if (argc > 1) {
-		try {
-			context->load_mesh(argv[1]);
-		}
-		catch (const std::exception &e) {
-			std::cerr << "Mesh load failed. Reason: " << e.what() << "\nAborting.\n";
-			return EXIT_FAILURE;
-		}
-	}
-	else {
-		std::cerr << utility::sprintfpp("Usage: %s mesh=[obj file]\n", argv[0]);
-		return EXIT_SUCCESS;
-	}
+    //Step 2: Load mesh into memory
+    if(argc > 1) {
+        try {
+            context->load_mesh(argv[1]);
+        } catch(const std::exception &e) {
+            std::cerr << "Mesh load failed. Reason: " << e.what() << "\nAborting.\n";
+            return EXIT_FAILURE;
+        }
+    } else {
+        std::cerr << utility::sprintfpp("Usage: %s mesh=[obj file]\n", argv[0]);
+        return EXIT_SUCCESS;
+    }
 
     //Step 3: Initialize objects
     init();
 
     //Step 4: Main loop
-    while (!glfwWindowShouldClose(context->window)) {
+    while(!glfwWindowShouldClose(context->window)) {
         render_forward();
         update_title();
 

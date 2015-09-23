@@ -17,7 +17,6 @@ GLS_PROGRAM_DEFINE(
 { "Position", "Normal" },
 { "outColor" },
 { "u_ModelMat", "u_ViewMat" , "u_PerspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_AmbientColor", "u_DiffuseColor" }
-
 );
 
 GLS_PROGRAM_DEFINE(
@@ -27,7 +26,6 @@ GLS_PROGRAM_DEFINE(
 { "Position", "Texcoord" },
 { "outColor" },
 { "u_Tex" }
-
 );
 
 constexpr float PI = 3.14159f;
@@ -77,11 +75,14 @@ typedef struct {
 } vertex2_t;
 
 namespace quad_attributes {
+
 enum {
     POSITION,
     TEXCOORD
 };
+
 }
+
 enum Display {
     DISPLAY_DEPTH = 0,
     DISPLAY_NORMAL = 1,

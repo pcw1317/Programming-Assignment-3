@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <string>
 
-class Mesh;
+class host_mesh_t;
 
 namespace mesh_attributes
 {
@@ -15,7 +15,7 @@ namespace mesh_attributes
 	};
 }
 
-class DeviceMesh
+class device_mesh_t
 {
 public:
 	unsigned int vertex_array;
@@ -24,19 +24,19 @@ public:
 	unsigned int vbo_vertices;
 	unsigned int vbo_normals;
 	unsigned int vbo_texcoords;
-	glm::vec3 ambientColor;
-	glm::vec3 diffuseColor;
-	std::string texname;
+	glm::vec3 ambient_color;
+	glm::vec3 diffuse_color;
+	std::string texture_name;
 
 public:
-	DeviceMesh(unsigned int vao,
+	device_mesh_t(unsigned int vao,
 		unsigned int vbo_idx,
 		unsigned int count_idx,
 		unsigned int vbo_vtx,
 		unsigned int vbo_norm,
 		unsigned int vbo_uv,
-		glm::vec3 ambientColor,
-		glm::vec3 diffuseColor,
+		glm::vec3 ambient_color,
+		glm::vec3 diffuse_color,
 		std::string texName)
 	{
 		vertex_array = vao;
@@ -45,9 +45,9 @@ public:
 		vbo_vertices = vbo_vtx;
 		vbo_normals = vbo_norm;
 		vbo_texcoords = vbo_uv;
-		this->ambientColor = ambientColor;
-		this->diffuseColor = diffuseColor;
-		texname = texName;
+		this->ambient_color = ambient_color;
+		this->diffuse_color = diffuse_color;
+		texture_name = texName;
 	}
-	static DeviceMesh deviceMeshFromMesh(const Mesh &mesh);
+	static device_mesh_t deviceMeshFromMesh(const host_mesh_t &mesh);
 };

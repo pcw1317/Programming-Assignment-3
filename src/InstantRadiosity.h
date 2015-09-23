@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <embree2/rtcore.h>
 #include <embree2/rtcore_ray.h>
-#include "Mesh.h"
+#include "host_mesh.h"
 #include <vector>
 #include <random>
 
@@ -43,14 +43,14 @@ public:
 		rtcExit();
 	}
 
-	void addMesh(Mesh mesh);
+	void addMesh(host_mesh_t mesh);
 	void commitScene() { rtcCommit(scene); }
 	std::vector<LightData> getVPLpos(LightData light, unsigned int count, unsigned int recursionDepth);
 	std::vector<LightData> getVPLpos(AreaLightData light, unsigned int sampleCount, unsigned int rayCount, unsigned int recursionDepth);
 	
 protected:
 	std::vector<unsigned int> geomIDs;
-	std::map<unsigned int, Mesh> geomIDToMesh;
+	std::map<unsigned int, host_mesh_t> geomIDToMesh;
 	std::default_random_engine randGen;
 	std::uniform_real_distribution<float> uniformReal;
 	const float jitterEpsilon = 0.2f;

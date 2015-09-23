@@ -1,8 +1,8 @@
 #include "system_context.h"
 #include <sstream>
 #include <iostream>
-#include "Mesh.h"
-#include "DeviceMesh.h"
+#include "host_mesh.h"
+#include "device_mesh.h"
 
 std::unique_ptr<system_context> system_context::global_context_ = nullptr;
 
@@ -25,10 +25,11 @@ void system_context::load_mesh(const char *path) {
         }
     }
 
+	//from tinyobj shapes, create mesh entries
     for (const auto &shape : shapes) {
-        Mesh mesh = Mesh::meshFromShape(shape);
+        host_mesh_t mesh = host_mesh_t(shape);
         //std::cout << mesh.getAABBmax().x << " " << mesh.getAABBmax().y << " " << mesh.getAABBmax().z << ", " << mesh.getAABBmin().x << " " << mesh.getAABBmin().y <<  " " << mesh.getAABBmin().z << std::endl;
-        drawMeshes.push_back(DeviceMesh::deviceMeshFromMesh(mesh));
+        drawMeshes.push_back(device_mesh_t::deviceMeshFromMesh(mesh));
         irKernel->addMesh(mesh);
         if (shape.material.name == "light") {
             // process light
