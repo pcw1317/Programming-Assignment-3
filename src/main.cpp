@@ -23,17 +23,9 @@
 
 #include "InstantRadiosity.h"
 
-constexpr float PI = 3.14159f;
-constexpr float kFarPlane = 2000.f;
-constexpr float kNearPlane = 0.1f;
-
 int mouse_buttons = 0;
 int mouse_old_x = 0, mouse_dof_x = 0;
 int mouse_old_y = 0, mouse_dof_y = 0;
-
-
-std::list<LightData> lightList;
-std::default_random_engine random_gen ((unsigned int)(time (NULL)));
 
 system_context *context;
 
@@ -80,37 +72,31 @@ void initQuad()
 }
 
 GLuint forward_shading_prog = 0;
+GLuint progs[2];
 
-void shaderInit() 
-{
-	// Vertex shaders
-	const char *pass_vert = "res/shaders/forward_vert.glsl";
-	const char *post_vert = "res/shaders/post.vert";
-	
-	// Fragment shaders
-	const char *forward_frag = "res/shaders/forward_frag.glsl";
-	const char *post_frag = "res/shaders/post.frag";
+#define CheckError()\
+{\
+	GLenum err = glGetError();\
+	if (err != GL_NO_ERROR)\
+	{\
+		for (; err != GL_NO_ERROR; err = glGetError())\
+		{\
+			switch (err)\
+			{\
+				case GL_INVALID_ENUM: printf("GL_INVALID_ENUM"); break;\
+				case GL_INVALID_OPERATION: printf("GL_INVALID_OPERATION"); break;\
+				case GL_INVALID_VALUE: printf("GL_INVALID_VALUE"); break;\
+				case GL_OUT_OF_MEMORY: printf("GL_OUT_OF_MEMORY"); break;\
+				default: break;\
+			}\
+		}\
+	}\
+}
 
-	std::unique_ptr<gls::program> programs[PROG_MAX];
-	programs[PROG_SCENEDRAW].reset(new gls::program(kProgramSceneDraw));
-
-	{
-		utility::shaders_t shaders = utility::loadShaders(pass_vert, forward_frag);
-		progs[PROG_SCENEDRAW] = glCreateProgram();
-		glBindAttribLocation(progs[PROG_SCENEDRAW], mesh_attributes::POSITION, "Position");
-		glBindAttribLocation(progs[PROG_SCENEDRAW], mesh_attributes::NORMAL, "Normal");
-		utility::attachAndLinkProgram(progs[PROG_SCENEDRAW], shaders);
-		glBindFragDataLocation(progs[PROG_SCENEDRAW], 0, "outColor");
-
-	}
-	{
-		utility::shaders_t shaders = utility::loadShaders(post_vert, post_frag);
-		progs[PROG_QUADDRAW] = glCreateProgram();
-		glBindAttribLocation(progs[PROG_QUADDRAW], quad_attributes::POSITION, "Position");
-		glBindAttribLocation(progs[PROG_QUADDRAW], quad_attributes::TEXCOORD, "Texcoord");
-		utility::attachAndLinkProgram(progs[PROG_QUADDRAW], shaders);
-		glBindFragDataLocation(progs[PROG_QUADDRAW], 0, "outColor");
-	}
+void init_shader() {
+	context->gls_programs.resize(PROG_MAX);
+	context->gls_programs[PROG_SCENEDRAW] = gls::program(kProgramSceneDraw);
+	context->gls_programs[PROG_QUADDRAW] = gls::program(kProgramQuadDraw);
 }
 
 void texInit()
@@ -187,45 +173,26 @@ glm::mat4 get_mesh_world()
 
 int lightIdx = 0;
 
-void draw_mesh_forward () 
+
+void draw_mesh_forward()
 {
-    glm::mat4 model = get_mesh_world();
-	glm::mat4 view,lview, persp, lpersp;
+	glm::mat4 model = get_mesh_world();
+	glm::mat4 view, lview, persp, lpersp;
 
 	view = context->pCam.get_view(); // Camera view Matrix
 	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, kNearPlane, kFarPlane);
 	lpersp = glm::perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, kNearPlane, kFarPlane);
 
-	GLuint modelMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_ModelMat");
-	GLuint viewMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_ViewMat");
-	GLuint perspMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_PerspMat");
-	GLuint vplPosLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_vplPosition");
-	GLuint vplIntLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_vplIntensity");
-	GLuint vplDirLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_vplDirection");
-	GLuint numLightsLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_numLights");
-	GLuint ambiColorLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_AmbientColor");
-	GLuint diffColorLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_DiffuseColor");
-	GLuint textureLoc = glGetUniformLocation(progs[PROG_QUADDRAW], "u_Tex");
-    
-	glUniform1i(numLightsLoc, context->VPLs.size());
-	//glUniform1i(numLightsLoc, 1);
+	context->gls_programs[PROG_SCENEDRAW].bind();
+	context->gls_programs[PROG_SCENEDRAW].set_uniform<int>(6 /*u_numLights*/, context->VPLs.size());
 	/*
 	if (indirectON)
-		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), nVPLs);
+	glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), nVPLs);
 	else
-		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), 0);
+	glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), 0);
 	*/
 	{
-		using glm::value_ptr;
-
-		glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, value_ptr(model));
-		glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, value_ptr(view));
-		glUniformMatrix4fv(perspMatLoc, 1, GL_FALSE, value_ptr(persp));
-		/*
-		glUniform3fv(vplPosLoc, 1, value_ptr(context->VPLs[lightIdx].position));
-		glUniform3fv(vplIntLoc, 1, value_ptr(context->VPLs[lightIdx].intensity));
-		glUniform3fv(vplDirLoc, 1, value_ptr(context->VPLs[lightIdx].direction));
-		*/
+		context->gls_programs[PROG_SCENEDRAW].set_uniforms_from(0 /*u_ModelMat*/, model, view, persp);
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_ACCUMULATE]);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -233,17 +200,14 @@ void draw_mesh_forward ()
 
 		for (int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter)
 		{
-			glUniform3fv(vplPosLoc, 1, value_ptr(context->VPLs[lightIter].position));
-			glUniform3fv(vplIntLoc, 1, value_ptr(context->VPLs[lightIter].intensity));
-			glUniform3fv(vplDirLoc, 1, value_ptr(context->VPLs[lightIter].direction));
+			context->gls_programs[PROG_SCENEDRAW].set_uniforms_from(3 /*u_vplPosition*/, context->VPLs[lightIter].position, context->VPLs[lightIter].intensity, context->VPLs[lightIter].direction);
 
-			glUseProgram(progs[PROG_SCENEDRAW]);
+			context->gls_programs[PROG_SCENEDRAW].bind();
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			for (int i = 0; i < context->drawMeshes.size(); i++)
 			{
-				glUniform3fv(diffColorLoc, 1, value_ptr(context->drawMeshes[i].diffuseColor));
-				glUniform3fv(ambiColorLoc, 1, value_ptr(context->drawMeshes[i].ambientColor));
+				context->gls_programs[PROG_SCENEDRAW].set_uniforms_from(7 /*u_AmbientColor*/, context->drawMeshes[i].ambientColor, context->drawMeshes[i].diffuseColor);
 				glBindVertexArray(context->drawMeshes[i].vertex_array);
 				glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT, 0);
 			}
@@ -288,8 +252,8 @@ void draw_mesh_forward ()
 		glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
 		*/
 	}
-    glBindVertexArray(0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 Display display_type = DISPLAY_TOTAL;
@@ -465,7 +429,7 @@ void window_callback_key(GLFWwindow *window, int key, int scancode, int action, 
         display_type = DISPLAY_TOTAL;
         break;
     case('R'):
-        shaderInit();
+        init_shader();
 		break;
 	case('7'):
         display_type = DISPLAY_SHADOW;
@@ -584,7 +548,7 @@ int main(int argc, char* argv[]) {
 	
 	//Step 3: Initialize objects
 	//initNoise();
-	shaderInit();
+	init_shader();
     init();
 	initQuad();
 	fboInit();

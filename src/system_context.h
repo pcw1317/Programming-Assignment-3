@@ -10,6 +10,7 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "gl_snippets.h"
 
 class DeviceMesh;
 
@@ -42,6 +43,8 @@ public:
 	Camera pCam;
 	glm::uvec2 viewport;
 	std::vector<LightData> VPLs;
+
+	std::vector<gls::program> gls_programs;
 
 protected:
 	static std::unique_ptr<system_context> global_context_;

@@ -13,7 +13,7 @@ void system_context::loadObj(char *path)
 	getline(liness, header, '='); getline(liness, data, '=');
 	if (strcmp(header.c_str(), "mesh") == 0)
 	{
-		int found = data.find_last_of("/\\");
+		std::size_t found = data.find_last_of("/\\");
 		std::string path = data.substr(0, found + 1);
 		std::cout << "Loading: " << data << std::endl;
 		err = tinyobj::LoadObj(shapes, data.c_str(), path.c_str());

@@ -1,5 +1,5 @@
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef _MAIN_H_
+#define _MAIN_H_
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -17,6 +17,16 @@ GLS_PROGRAM_DEFINE(
 	{ "Position", "Normal" },
 	{ "outColor" },
 	{ "u_ModelMat", "u_ViewMat" , "u_PerspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_AmbientColor", "u_DiffuseColor" }
+
+);
+
+GLS_PROGRAM_DEFINE(
+	kProgramQuadDraw,
+	"res/shaders/post.vert",
+	"res/shaders/post.frag",
+	{ "Position", "Texcoord" },
+	{ "outColor" },
+	{ "u_Tex" }
 
 );
 
@@ -61,7 +71,6 @@ const GLenum types[TEX_MAX] =
 std::vector<tinyobj::shape_t> shapes;
 GLuint textures[TEX_MAX];
 GLuint fbo[FBO_MAX];
-GLuint progs[PROG_MAX];
 
 typedef struct 
 {
@@ -104,29 +113,5 @@ enum Render
     RENDER_CAMERA = 0,
     RENDER_LIGHT = 1
 };
-
-char* loadFile(char *fname, GLint &fSize);
-void printShaderInfoLog(GLint shader);
-void printLinkInfoLog(GLint prog);
-void initShade();
-void initPass();
-
-void initMesh();
-
-void display(void);
-void keyboard(unsigned char, int, int);
-void reshape(int, int);
-
-//int main (int argc, char* argv[]);
-
-void    initNoise();
-void    shaderInit();
-void    initFBO(int width, int height);
-void    init();
-void    initMesh();
-void    initQuad();
-void	initVPL ();
-
-void	checkError (char * printString);
 
 #endif
