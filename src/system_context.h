@@ -45,6 +45,9 @@ public:
 	std::vector<LightData> VPLs;
 
 	std::vector<gls::program> gls_programs;
+	std::vector<gls::buffer> gls_buffers;
+	std::vector<gls::vertex_array> gls_vertex_arrays;
+	std::vector<gls::framebuffer<gls::texture, gls::texture> > gls_framebuffers;
 
 protected:
 	static std::unique_ptr<system_context> global_context_;

@@ -9,6 +9,7 @@
 #include <GL/glew.h>
 #include <utility.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <vector>
 
 namespace gls {
 	namespace _gls_detail {
@@ -16,7 +17,9 @@ namespace gls {
 		inline void check_bound(const T &obj) {
 #			if defined(_DEBUG) && !defined(GLS_NO_BIND_CHECK)
 			GLint ret;
-			glGetIntegerv(T::kBindParameterName, &ret);
+			if (obj.get_bind_parameter_name() == 0)
+				return;
+			glGetIntegerv(obj.get_bind_parameter_name(), &ret);
 			assert(obj.get() == ret);
 #			endif
 		}
@@ -27,6 +30,7 @@ namespace gls {
 		GLuint get() const { return shader_; }
 
 	public:
+		shader() : shader_(0) {}
 		shader(const char *path, GLenum type): path_(path), type_(type) {
 			std::string shader_source = utility::read_file(path);
 
@@ -66,7 +70,7 @@ namespace gls {
 		}
 		shader(const shader&) = delete;
 		shader& operator=(const shader&) = delete;
-		~shader() {
+		virtual ~shader() {
 			if(shader_)
 				glDeleteShader(shader_);
 		}
@@ -103,7 +107,7 @@ namespace gls {
 	class program {
 	public:
 		//common interfaces
-		static constexpr GLenum kBindParameterName = GL_CURRENT_PROGRAM;
+		GLenum get_bind_parameter_name() const { return GL_CURRENT_PROGRAM; }
 		GLuint get() const { return program_; }
 		void bind() { glUseProgram(program_); }
 		void unbind() { glUseProgram(0); }
@@ -192,7 +196,7 @@ namespace gls {
 
 		program(const program&) = delete;
 		program& operator=(const program&) = delete;
-		~program() {
+		virtual ~program() {
 			if (program_)
 				glDeleteProgram(program_);
 		}
@@ -273,6 +277,269 @@ namespace gls {
 	template<> inline void program::set_uniform<glm::mat4x2>(GLuint index, const glm::mat4x2 &value) { _gls_detail::check_bound(*this);  glUniformMatrix4x2fv(uniform_locations_[index], 1, GL_FALSE, glm::value_ptr(value)); }
 	template<> inline void program::set_uniform<glm::dmat4x3>(GLuint index, const glm::dmat4x3 &value) { _gls_detail::check_bound(*this);  glUniformMatrix4x3dv(uniform_locations_[index], 1, GL_FALSE, glm::value_ptr(value)); }
 	template<> inline void program::set_uniform<glm::mat4x3>(GLuint index, const glm::mat4x3 &value) { _gls_detail::check_bound(*this);  glUniformMatrix4x3fv(uniform_locations_[index], 1, GL_FALSE, glm::value_ptr(value)); }
+
+	class buffer {
+	public:
+		//common interfaces
+		GLenum get_bind_parameter_name() const {
+			switch (target_) {
+			case GL_ARRAY_BUFFER:
+				return GL_ARRAY_BUFFER_BINDING;
+			//case GL_ATOMIC_COUNTER_BUFFER:
+			//case GL_COPY_READ_BUFFER:
+			//case GL_COPY_WRITE_BUFFER:
+			case GL_DISPATCH_INDIRECT_BUFFER:
+				return GL_DISPATCH_INDIRECT_BUFFER_BINDING;
+			//case GL_DRAW_INDIRECT_BUFFER:
+			case GL_ELEMENT_ARRAY_BUFFER:
+				return GL_ELEMENT_ARRAY_BUFFER_BINDING;
+			case GL_PIXEL_PACK_BUFFER:
+				return GL_PIXEL_PACK_BUFFER_BINDING;
+			case GL_PIXEL_UNPACK_BUFFER:
+				return GL_PIXEL_UNPACK_BUFFER_BINDING;
+			//case GL_QUERY_BUFFER:
+			case GL_SHADER_STORAGE_BUFFER:
+				return GL_SHADER_STORAGE_BUFFER_BINDING;
+			//case GL_TEXTURE_BUFFER:
+			case GL_TRANSFORM_FEEDBACK_BUFFER:
+				return GL_TRANSFORM_FEEDBACK_BUFFER_BINDING;
+			case GL_UNIFORM_BUFFER:
+				return GL_UNIFORM_BUFFER_BINDING;
+			default:
+				return 0;
+			}
+		}
+		GLuint get() const { return buffer_; }
+		void bind() { glBindBuffer(target_, buffer_); }
+		void unbind() { glBindBuffer(target_, 0); }
+
+	public:
+		buffer() : buffer_(0), num_elements_(0), size_element_(0) {}
+		buffer(GLenum target, GLenum usage): target_(target), usage_(usage), num_elements_(0), size_element_(0) {
+			glGenBuffers(1, &buffer_);
+		}
+		buffer(const buffer&) = delete;
+		buffer& operator=(const buffer&) = delete;
+		virtual ~buffer() {
+			if (buffer_)
+				glDeleteBuffers(1, &buffer_);
+
+		}
+		buffer(buffer &&rhs) {
+			*this = std::move(rhs);
+		}
+		buffer& operator=(buffer &&rhs) {
+			if (buffer_)
+				glDeleteBuffers(1, &buffer_);
+
+			buffer_ = rhs.buffer_;
+			rhs.buffer_ = 0;
+			target_ = rhs.target_;
+			usage_ = rhs.usage_;
+			num_elements_ = rhs.num_elements_;
+			rhs.num_elements_ = 0;
+			size_element_ = rhs.size_element_;
+			rhs.size_element_ = 0;
+			return *this;
+		}
+
+		std::size_t size() const { return num_elements_ * size_element_; }
+
+		void set_data(const void *data, size_t num_elements, size_t size_element) {
+			_gls_detail::check_bound(*this);
+			num_elements_ = num_elements;
+			size_element_ = size_element;
+			glBufferData(target_, size(), data, usage_);
+		}
+
+		template<typename T>
+		void set_data(const std::vector<T> &data) {
+			set_data(&data[0], data.size(), sizeof(T))
+		}
+
+		std::size_t num_elements() const { return num_elements_; }
+		std::size_t size_element() const { return size_element_; }
+		GLenum target() const { return target_; }
+	private:
+		GLuint buffer_;
+		GLenum target_;
+		GLenum usage_;
+		std::size_t num_elements_;
+		std::size_t size_element_;
+	};
+
+	class vertex_array {
+	public:
+		//common interfaces
+		GLenum get_bind_parameter_name() const { return GL_VERTEX_ARRAY_BINDING; }
+		GLuint get() const { return va_; }
+		void bind() { glBindVertexArray(va_); }
+		void unbind() { glBindVertexArray(0); }
+	public:
+		vertex_array() {
+			glGenVertexArrays(1, &va_);
+		}
+		vertex_array(const vertex_array&) = delete;
+		vertex_array& operator=(const vertex_array&) = delete;
+		virtual ~vertex_array() {
+			if (va_)
+				glDeleteVertexArrays(1, &va_);
+		}
+		vertex_array(vertex_array &&rhs) { *this = std::move(rhs); }
+		vertex_array& operator=(vertex_array &&rhs) {
+			if (va_)
+				glDeleteVertexArrays(1, &va_);
+
+			va_ = rhs.va_;
+			rhs.va_ = 0;
+			return *this;
+		}
+
+		void set_attribute(GLuint index, buffer &buf, GLint element_dimension, GLenum element_type, bool normalize, GLsizei stride, GLsizei offset) {
+			_gls_detail::check_bound(*this);
+			assert(buf.target() == GL_ARRAY_BUFFER);			
+			glEnableVertexAttribArray(index);
+			
+			buf.bind();
+			glVertexAttribPointer(index, element_dimension, element_type, normalize ? GL_TRUE : GL_FALSE, stride, reinterpret_cast<const GLvoid*>(offset));
+		}
+		void clear_attribute(GLuint index) {
+			_gls_detail::check_bound(*this);
+			glDisableVertexAttribArray(index);
+		}
+	private:
+		GLuint va_;
+	};
+
+	template<typename ColorMapType, typename DepthMapType>
+	class framebuffer {
+	public:
+		//common interfaces
+		GLenum get_bind_parameter_name() const { return GL_FRAMEBUFFER_BINDING; }
+		GLuint get() const { return framebuffer_; }
+		void bind() { glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_); }
+		void unbind() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
+	public:
+		framebuffer(): framebuffer_(0) {}
+		framebuffer(int width, int height) {
+			glGenFramebuffers(1, &framebuffer_);
+
+			color_map_ = std::move(ColorMapType::generate_rgb_buffer(width, height));
+			depth_map_ = std::move(DepthMapType::generate_depth_buffer(width, height));
+
+			bind();
+
+			color_map_->attach_on(*this, GL_COLOR_ATTACHMENT0);
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+			depth_map_->attach_on(*this, GL_DEPTH_ATTACHMENT);
+
+			GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
+			glDrawBuffers(1, draw_buffers);
+
+			assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+			glViewport(0, 0, width, height);
+		}
+		framebuffer(const framebuffer&) = delete;
+		framebuffer& operator=(const framebuffer&) = delete;
+		virtual ~framebuffer() {
+			if (framebuffer_)
+				glDeleteFramebuffers(1, &framebuffer_);
+		}
+		framebuffer(framebuffer &&rhs) { *this = std::move(rhs); }
+		framebuffer& operator=(framebuffer &&rhs) {
+			if (framebuffer_)
+				glDeleteFramebuffers(1, &framebuffer_);
+
+			framebuffer_ = rhs.framebuffer_;
+			rhs.framebuffer_ = 0;
+			color_map_ = std::move(rhs.color_map_);
+			depth_map_ = std::move(rhs.depth_map_);
+			return *this;
+		}
+	private:
+		GLuint framebuffer_;
+		std::unique_ptr<ColorMapType> color_map_;
+		std::unique_ptr<DepthMapType> depth_map_;
+	};
+
+	class texture {
+	public:
+		//common interfaces
+		GLenum get_bind_parameter_name() const { 
+			switch (target_) {
+			case GL_TEXTURE_2D:
+				return GL_TEXTURE_BINDING_2D;
+			case GL_TEXTURE_CUBE_MAP:
+				return GL_TEXTURE_BINDING_CUBE_MAP;
+			default:
+				return 0;
+			}
+		}
+		GLuint get() const { return texture_; }
+		void bind() { glBindTexture(target_, texture_); }
+		void unbind() { glBindTexture(target_, 0); }
+	public:
+		texture() : texture_(0) {}
+		texture(GLenum target) : target_(target) {
+			glGenTextures(1, &texture_);
+		}
+		texture(const texture&) = delete;
+		texture& operator=(const texture&) = delete;
+		virtual ~texture() {
+			if (texture_)
+				glDeleteTextures(1, &texture_);
+		}
+		texture(texture &&rhs) { *this = std::move(rhs); }
+		texture& operator=(texture &&rhs) {
+			if (texture_)
+				glDeleteTextures(1, &texture_);
+
+			texture_ = rhs.texture_;
+			rhs.texture_ = 0;
+			target_ = rhs.target_;
+			return *this;
+		}
+
+		template<typename ColorMapType, typename DepthMapType>
+		void attach_on(framebuffer<ColorMapType, DepthMapType> &fb, GLenum attachment_target, GLint mipmap_level = 0) {
+			_gls_detail::check_bound(fb);
+			glFramebufferTexture(GL_FRAMEBUFFER, attachment_target, texture_, mipmap_level);
+		}
+
+		inline static std::unique_ptr<texture> generate_rgb_buffer(int width, int height);
+		inline static std::unique_ptr<texture> generate_depth_buffer(int width, int height);
+	protected:
+		GLenum target_;
+		GLuint texture_;
+	};
+
+	inline std::unique_ptr<texture> texture::generate_rgb_buffer(int width, int height) {
+		std::unique_ptr<texture> tex(new texture(GL_TEXTURE_2D));
+
+		tex->bind();
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+		
+		return tex;
+	}
+	inline std::unique_ptr<texture> texture::generate_depth_buffer(int width, int height) {
+		std::unique_ptr<texture> tex(new texture(GL_TEXTURE_2D));
+
+		tex->bind();
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+		
+		return tex;
+	}
 }
 
 #endif

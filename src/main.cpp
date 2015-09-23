@@ -3,7 +3,7 @@
 #include "Utility.h"
 #include "Light.h"
 #include "system_context.h"
-#include "DeviceMesh.h"	// ad hoc
+#include "DeviceMesh.h"
 #include "gl_snippets.h"
 
 #include <SOIL/SOIL.h>
@@ -33,7 +33,7 @@ glm::mat4 get_mesh_world ();
 
 device_mesh2_t device_quad;
 
-void initQuad()
+void init_quad()
 {
 	vertex2_t verts[] = { {glm::vec3(-1, 1,0), glm::vec2(0,1)},
 						  {glm::vec3(-1,-1,0), glm::vec2(0,0)},
@@ -45,34 +45,28 @@ void initQuad()
     //Allocate vertex array
     //Vertex arrays encapsulate a set of generic vertex attributes and the buffers they are bound too
     //Different vertex array per mesh.
-    glGenVertexArrays(1, &(device_quad.vertex_array));
-    glBindVertexArray(device_quad.vertex_array);
+	context->gls_vertex_arrays[kGlsVertexArrayQuad] = gls::vertex_array();
+	context->gls_vertex_arrays[kGlsVertexArrayQuad].bind();
 
-    //Allocate vbos for data
-    glGenBuffers(1,&(device_quad.vbo_data));
-    glGenBuffers(1,&(device_quad.vbo_indices));
+    //Allocate vbos for data and indices
+	context->gls_buffers[kGlsBufferQuadVertexBuffer] = gls::buffer(GL_ARRAY_BUFFER, GL_STATIC_DRAW);
+	context->gls_buffers[kGlsBufferQuadIndexBuffer] = gls::buffer(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW);
 
-    //Upload vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, device_quad.vbo_data);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+	//Upload vertex data
+	context->gls_buffers[kGlsBufferQuadVertexBuffer].bind();
+	context->gls_buffers[kGlsBufferQuadVertexBuffer].set_data(verts, std::size(verts), sizeof(vertex2_t));
 
     //Use of strided data, Array of Structures instead of Structures of Arrays
-    glVertexAttribPointer(quad_attributes::POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(vertex2_t), 0);
-    glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2_t), (void*)sizeof(glm::vec3));
-    glEnableVertexAttribArray(quad_attributes::POSITION);
-    glEnableVertexAttribArray(quad_attributes::TEXCOORD);
+	context->gls_vertex_arrays[kGlsVertexArrayQuad].set_attribute(quad_attributes::POSITION, context->gls_buffers[kGlsBufferQuadVertexBuffer], 3, GL_FLOAT, false, sizeof(vertex2_t), 0);
+	context->gls_vertex_arrays[kGlsVertexArrayQuad].set_attribute(quad_attributes::TEXCOORD, context->gls_buffers[kGlsBufferQuadVertexBuffer], 2, GL_FLOAT, false, sizeof(vertex2_t), sizeof(glm::vec3));
 
-    //indices
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, device_quad.vbo_indices);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6*sizeof(GLushort), indices, GL_STATIC_DRAW);
-    device_quad.num_indices = 6;
+    //Upload index data
+    context->gls_buffers[kGlsBufferQuadIndexBuffer].bind();
+	context->gls_buffers[kGlsBufferQuadVertexBuffer].set_data(indices, std::size(indices), sizeof(unsigned short));
 
     //Unplug Vertex Array
-    glBindVertexArray(0);
+	context->gls_vertex_arrays[kGlsVertexArrayQuad].unbind();
 }
-
-GLuint forward_shading_prog = 0;
-GLuint progs[2];
 
 #define CheckError()\
 {\
@@ -94,76 +88,15 @@ GLuint progs[2];
 }
 
 void init_shader() {
-	context->gls_programs.resize(PROG_MAX);
-	context->gls_programs[PROG_SCENEDRAW] = gls::program(kProgramSceneDraw);
-	context->gls_programs[PROG_QUADDRAW] = gls::program(kProgramQuadDraw);
+	context->gls_programs[kGlsProgramSceneDraw] = gls::program(kProgramSceneDraw);
+	context->gls_programs[kGlsProgramQuadDraw] = gls::program(kProgramQuadDraw);
 }
 
-void texInit()
-{
-	int viewport[4];
-	glGetIntegerv(GL_VIEWPORT, viewport);
-	int fbo_width, fbo_height;
-	fbo_width = viewport[2];
-	fbo_height = viewport[3];
 
-	glGenTextures(TEX_MAX, textures);
-	for (int i = 0; i < TEX_MAX; ++i)
-	{
-		glBindTexture(GL_TEXTURE_2D, textures[(Textures)i]);
-
-		// Set texture parameters for each texture
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-		if (formats[i] == GL_DEPTH_COMPONENT)
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-		}
-		if (formats[i] == GL_RED)
-		{
-			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		}
-
-		glTexImage2D(GL_TEXTURE_2D, 0, internalFormats[i],
-			fbo_width, fbo_height, 0, formats[i], types[i], NULL);
-	}
-
-	glBindTexture(GL_TEXTURE_2D, NULL);
-}
-
-void fboInit()
-{
-	glGenFramebuffers(FBO_MAX, fbo);
-
-	texInit();
-
-	GLenum status;
-
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_SCENEDRAW]);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
-		GL_TEXTURE_2D, textures[TEX_SCENE], 0);
-	status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	assert(status == GL_FRAMEBUFFER_COMPLETE);
-	{
-		GLuint attachments[1] = { GL_COLOR_ATTACHMENT0 };
-		glDrawBuffers(1, attachments);
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_ACCUMULATE]);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D, textures[TEX_ACCUM], 0);
-	status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	assert(status == GL_FRAMEBUFFER_COMPLETE);
-	{
-		GLuint attachments[1] = { GL_COLOR_ATTACHMENT0 };
-		glDrawBuffers(1, attachments);
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+void init_framebuffer() {
+	context->gls_framebuffers[kGlsFramebufferSceneDraw] = gls::framebuffer<gls::texture, gls::texture>(context->viewport.x, context->viewport.y);
+	context->gls_framebuffers[kGlsFramebufferAccumulate] = gls::framebuffer<gls::texture, gls::texture>(context->viewport.x, context->viewport.y);
+	context->gls_framebuffers[kGlsFramebufferAccumulate].unbind();
 }
 
 glm::mat4 get_mesh_world() 
@@ -183,8 +116,8 @@ void draw_mesh_forward()
 	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, kNearPlane, kFarPlane);
 	lpersp = glm::perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, kNearPlane, kFarPlane);
 
-	context->gls_programs[PROG_SCENEDRAW].bind();
-	context->gls_programs[PROG_SCENEDRAW].set_uniform<int>(6 /*u_numLights*/, context->VPLs.size());
+	context->gls_programs[kGlsProgramSceneDraw].bind();
+	context->gls_programs[kGlsProgramSceneDraw].set_uniform<int>(6 /*u_numLights*/, context->VPLs.size());
 	/*
 	if (indirectON)
 	glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), nVPLs);
@@ -192,43 +125,43 @@ void draw_mesh_forward()
 	glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), 0);
 	*/
 	{
-		context->gls_programs[PROG_SCENEDRAW].set_uniforms_from(0 /*u_ModelMat*/, model, view, persp);
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_ACCUMULATE]);
+		context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(0 /*u_ModelMat*/, model, view, persp);
+		context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		for (int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter)
 		{
-			context->gls_programs[PROG_SCENEDRAW].set_uniforms_from(3 /*u_vplPosition*/, context->VPLs[lightIter].position, context->VPLs[lightIter].intensity, context->VPLs[lightIter].direction);
+			context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(3 /*u_vplPosition*/, context->VPLs[lightIter].position, context->VPLs[lightIter].intensity, context->VPLs[lightIter].direction);
 
-			context->gls_programs[PROG_SCENEDRAW].bind();
+			context->gls_programs[kGlsProgramSceneDraw].bind();
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			for (int i = 0; i < context->drawMeshes.size(); i++)
 			{
-				context->gls_programs[PROG_SCENEDRAW].set_uniforms_from(7 /*u_AmbientColor*/, context->drawMeshes[i].ambientColor, context->drawMeshes[i].diffuseColor);
+				context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(7 /*u_AmbientColor*/, context->drawMeshes[i].ambientColor, context->drawMeshes[i].diffuseColor);
 				glBindVertexArray(context->drawMeshes[i].vertex_array);
 				glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT, 0);
 			}
 
 			/*
-			glUseProgram(progs[PROG_QUADDRAW]);
+			glUseProgram(progs[kGlsProgramQuadDraw]);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			// bind accumulation texture
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, textures[TEX_SCENE]);
+			glBindTexture(GL_TEXTURE_2D, textures[kGlsTextureScene]);
 			glUniform1i(textureLoc, 0);
 			// draw screenquad with accumulation texture
 			glBindVertexArray(device_quad.vertex_array);
 			glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
 			*/
 			/*
-			glUseProgram(progs[PROG_QUADDRAW]);
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo[FBO_ACCUMULATE]);
+			glUseProgram(progs[kGlsProgramQuadDraw]);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo[kGlsFramebufferAccumulate]);
 			// bind scenedraw texture
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, textures[TEX_SCENE]);
+			glBindTexture(GL_TEXTURE_2D, textures[kGlsTextureScene]);
 			glUniform1i(textureLoc, 0);
 			// enable blend
 			glEnable(GL_BLEND);
@@ -241,11 +174,11 @@ void draw_mesh_forward()
 			*/
 		}
 		/*
-		glUseProgram(progs[PROG_QUADDRAW]);
+		glUseProgram(progs[kGlsProgramQuadDraw]);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		// bind accumulation texture
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textures[TEX_ACCUM]);
+		glBindTexture(GL_TEXTURE_2D, textures[kGlsTextureAccumulate]);
 		glUniform1i(textureLoc, 0);
 		// draw screenquad with accumulation texture
 		glBindVertexArray(device_quad.vertex_array);
@@ -260,10 +193,8 @@ Display display_type = DISPLAY_TOTAL;
 void draw_quad() 
 {
     glBindVertexArray(device_quad.vertex_array);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, device_quad.vbo_indices);
-
-    glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT,0);
-
+	context->gls_buffers[kGlsBufferQuadIndexBuffer].bind();
+    glDrawElements(GL_TRIANGLES, context->gls_buffers[kGlsBufferQuadIndexBuffer].num_elements(), GL_UNSIGNED_SHORT,0);
     glBindVertexArray(0);
 }
 
@@ -445,10 +376,16 @@ void window_callback_key(GLFWwindow *window, int key, int scancode, int action, 
     }
 }
 
-void init() 
-{
+void init() {
+	//GL parameter initialization
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f,1.0f);
+
+	//context gls object initialization
+	context->gls_programs.resize(kGlsProgramMax);
+	context->gls_buffers.resize(kGlsBufferMax);
+	context->gls_vertex_arrays.resize(kGlsVertexArrayMax);
+	context->gls_framebuffers.resize(kGlsFramebufferMax);
 }
 
 namespace {
@@ -548,10 +485,10 @@ int main(int argc, char* argv[]) {
 	
 	//Step 3: Initialize objects
 	//initNoise();
+	init();
 	init_shader();
-    init();
-	initQuad();
-	fboInit();
+	//init_quad();
+	init_framebuffer();
 	context->initMesh();
 
 	//Step 4: Main loop

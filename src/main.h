@@ -34,43 +34,36 @@ constexpr float PI = 3.14159f;
 constexpr float kFarPlane = 2000.f;
 constexpr float kNearPlane = 0.1f;
 
-
-
-
-
-
-
-enum Textures
-{
-	TEX_SCENE,
-	TEX_ACCUM,
-	TEX_MAX
+enum gls_program_t {
+	kGlsProgramSceneDraw,
+	kGlsProgramQuadDraw,
+	kGlsProgramMax
 };
 
-enum FBOs
-{
-	FBO_SCENEDRAW,
-	FBO_ACCUMULATE,
-	FBO_MAX
+enum gls_buffer_t {
+	kGlsBufferQuadVertexBuffer,
+	kGlsBufferQuadIndexBuffer,
+	kGlsBufferMax
 };
 
-enum Progs
-{
-	PROG_SCENEDRAW,
-	PROG_QUADDRAW,
-	PROG_MAX
+enum gls_vertex_array_t {
+	kGlsVertexArrayQuad,
+	kGlsVertexArrayMax
 };
 
-const GLenum internalFormats[TEX_MAX] =
-{ GL_RGBA32F, GL_RGBA32F };
-const GLenum formats[TEX_MAX] =
-{ GL_RGBA, GL_RGBA };
-const GLenum types[TEX_MAX] =
-{ GL_FLOAT, GL_FLOAT };
+enum gls_framebuffer_t {
+	kGlsFramebufferSceneDraw,
+	kGlsFramebufferAccumulate,
+	kGlsFramebufferMax
+};
+
+enum gls_texture_t {
+	kGlsTextureScene,
+	kGlsTextureAccumulate,
+	kGlsTextureMax
+};
 
 std::vector<tinyobj::shape_t> shapes;
-GLuint textures[TEX_MAX];
-GLuint fbo[FBO_MAX];
 
 typedef struct 
 {
