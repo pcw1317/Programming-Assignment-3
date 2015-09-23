@@ -6,7 +6,6 @@
 #include "DeviceMesh.h"	// ad hoc
 
 #include <SOIL/SOIL.h>
-#include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform2.hpp>
 #include <glm/gtx/rotate_vector.hpp>
@@ -23,18 +22,19 @@
 
 #include "InstantRadiosity.h"
 
-GLFWwindow *window;
-
 const float PI = 3.14159f;
 
-bool forwardR = true, indirectON = false, DOFEnabled = false, DOFDebug = false;
+bool indirectON = false, DOFEnabled = false, DOFDebug = false;
 
 int mouse_buttons = 0;
 int mouse_old_x = 0, mouse_dof_x = 0;
 int mouse_old_y = 0, mouse_dof_y = 0;
 
-float FARP = 2000.f;
-float NEARP = 0.1f;
+constexpr float kFarPlane = 2000.f;
+constexpr float kNearPlane = 0.1f;
+
+std::list<LightData> lightList;
+std::default_random_engine random_gen ((unsigned int)(time (NULL)));
 
 SystemContext *context;
 
@@ -198,7 +198,8 @@ void draw_mesh_forward ()
 
 
 	view = context->pCam.get_view(); // Camera view Matrix
-	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, NEARP, FARP);
+	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, kNearPlane, kFarPlane);
+	lpersp = glm::perspective(120.0f, (float)context->viewport.x / (float)context->viewport.y, kNearPlane, kFarPlane);
 
 	GLuint modelMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_ModelMat");
 	GLuint viewMatLoc = glGetUniformLocation(progs[PROG_SCENEDRAW], "u_ViewMat");
@@ -296,7 +297,7 @@ void draw_mesh_forward ()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 }
 
-enum Display display_type = DISPLAY_TOTAL;
+Display display_type = DISPLAY_TOTAL;
 void draw_quad() 
 {
     glBindVertexArray(device_quad.vertex_array);
@@ -307,74 +308,54 @@ void draw_quad()
     glBindVertexArray(0);
 }
 
-void updateDisplayText(char * disp) 
-{
-    switch(display_type) 
-	{
-        case(DISPLAY_DEPTH):
-            sprintf(disp, "Displaying Depth");
-            break; 
-        case(DISPLAY_NORMAL):
-            sprintf(disp, "Displaying Normal");
-            break; 
-        case(DISPLAY_COLOR):
-            sprintf(disp, "Displaying Color");
-            break;
-        case(DISPLAY_POSITION):
-            sprintf(disp, "Displaying Position");
-            break;
-        case(DISPLAY_TOTAL):
-            sprintf(disp, "Displaying Diffuse");
-            break;
-        case(DISPLAY_LIGHTS):
-            sprintf(disp, "Displaying Lights");
-            break;
-		case DISPLAY_GLOWMASK:
-			sprintf(disp, "Displaying Glow Mask");
-			break;
-		case(DISPLAY_SHADOW):
-            sprintf(disp, "Displaying ShadowMap");
-            break;
-    }
-}
-
 int frame = 0;
 int currenttime = 0;
 int timebase = 0;
-char title[1024];
 char disp[1024];
 char occl[1024];
-void updateTitle() 
+
+void update_title() 
 {
-    updateDisplayText(disp);
-    //calculate the frames per second
-    frame++;
+	//FPS calculation
+	static unsigned long frame = 0;
+	static double time_base = glfwGetTime();
+	++frame;
+	double time_now = glfwGetTime();
 
-    //get the current time
-    currenttime = int(glfwGetTime() * 1000);
+	if (time_now - time_base > 1.0) {//update title if a second passes
+		const char *displaying;
+		switch (display_type)
+		{
+		case(DISPLAY_DEPTH) :
+			displaying = "Depth";
+		case(DISPLAY_NORMAL) :
+			displaying = "Normal";
+		case(DISPLAY_COLOR) :
+			displaying = "Color";
+		case(DISPLAY_POSITION) :
+			displaying = "Position";
+		case(DISPLAY_TOTAL) :
+			displaying = "Diffuse";
+		case(DISPLAY_LIGHTS) :
+			displaying = "Lights";
+		case DISPLAY_GLOWMASK:
+			displaying = "Glow Mask";
+		case(DISPLAY_SHADOW) :
+			displaying = "ShadowMap";
+		}
 
-    //check if a second has passed
-    if (currenttime - timebase > 1000) 
-    {
-		if (forwardR)
-			strcat (disp, " Forward Rendering");
-		else
-			strcat (disp, " Deferred Rendering");
+		std::string title = utility::sprintfpp("CS482 Instant Radiosity | Displaying <%s>, GI %s, DOF %s | FPS: %4.2f",
+			displaying,
+			indirectON ? "on" : "off",
+			DOFEnabled ? "on" : "off",
+			frame / (time_now - time_base)
+			);
 
-		if (indirectON)
-			strcat (disp, " GI On");
-		else
-			strcat (disp, " No GI");
-
-		if (DOFEnabled)
-			strcat (disp, " DOF On");
-
-        sprintf(title, "CIS565 OpenGL Frame | %s FPS: %4.2f", disp, frame*1000.0/(currenttime-timebase));
-        //sprintf(title, "CIS565 OpenGL Frame | %4.2f FPS", frame*1000.0/(currenttime-timebase));
-        glfwSetWindowTitle(window, title);
-        timebase = currenttime;		
-        frame = 0;
-    }
+		glfwSetWindowTitle(context->window, title.c_str());
+		//reset per-second frame statistics for next update
+		time_base = time_now;
+		frame = 0;
+	}
 }
 
 bool doIScissor = true;
@@ -387,15 +368,7 @@ void RenderForward ()
 	draw_mesh_forward ();
 }
 
-void display(void)
-{
-	if (forwardR)
-		RenderForward ();
-
-    updateTitle();
-}
-
-void reshape(GLFWwindow *window, int w, int h)
+void window_callback_size(GLFWwindow *window, int w, int h)
 {
     context->viewport.x = w;
     context->viewport.y = h;
@@ -403,7 +376,7 @@ void reshape(GLFWwindow *window, int w, int h)
     glViewport(0,0,(GLsizei)w,(GLsizei)h);
 }
 
-void mouse(GLFWwindow *window, int button, int action, int mods)
+void window_callback_mouse_button(GLFWwindow *window, int button, int action, int mods)
 {
 	if (action == GLFW_PRESS)
 	{
@@ -417,8 +390,8 @@ void mouse(GLFWwindow *window, int button, int action, int mods)
 		double x, y;
 		glfwGetCursorPos(window, &x, &y);
 
-		mouse_old_x = x;
-		mouse_old_y = y;
+		mouse_old_x = int(x);
+		mouse_old_y = int(y);
 	}
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
@@ -427,7 +400,7 @@ void mouse(GLFWwindow *window, int button, int action, int mods)
 	}
 }
 
-void motion(GLFWwindow *window, double x, double y)
+void window_callback_cursor_pos(GLFWwindow *window, double x, double y)
 {
 	float dx, dy;
 	dx = -(float)(x - mouse_old_x);
@@ -442,9 +415,12 @@ void motion(GLFWwindow *window, double x, double y)
 	{
 		context->pCam.rotate(glm::vec3(dy * sensitivity, 0, dx * sensitivity));
 	}
+
+	mouse_old_x = int(x);
+	mouse_old_y = int(y);
 }
 
-void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
+void window_callback_key(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     float tx = 0;
     float ty = 0;
@@ -454,66 +430,63 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
 	float speed = 10.f;
     switch(key) 
 	{
-        case(27):
-            std::exit(0);
-            break;
-		case('W') :
-			tz = speed;
-            break;
-		case('S') :
-			tz = -speed;
-            break;
-		case('D') :
-			tx = -speed;
-            break;
-		case('A') :
-			tx = speed;
-            break;
-		case('Q') :
-			ty = speed;
-            break;
-		case('Z') :
-			ty = -speed;
-            break;
-        case('1'):
-            display_type = DISPLAY_DEPTH;
-            break;
-        case('2'):
-            display_type = DISPLAY_NORMAL;
-            break;
-        case('3'):
-            display_type = DISPLAY_COLOR;
-            break;
-        case('4'):
-            display_type = DISPLAY_POSITION;
-            break;
-        case('5'):
-            display_type = DISPLAY_LIGHTS;
-            break;
-        case('6'):
-            display_type = DISPLAY_GLOWMASK;
-            break;
-        case('0'):
-            display_type = DISPLAY_TOTAL;
-            break;
-        case('X'):
-            doIScissor ^= true;
-            break;
-        case('R'):
-            shaderInit();
-			break;
-		case('7'):
-            display_type = DISPLAY_SHADOW;
-			break;
-		case 'F':
-			forwardR = !forwardR;
-			break;
-		case 'G':
-			indirectON = !indirectON;
-			break;
-		case ' ':
-			lightIdx = (lightIdx + 1) % context->VPLs.size();
-			break;
+	case GLFW_KEY_ESCAPE:
+		glfwSetWindowShouldClose(window, true);
+        break;
+	case('W') :
+		tz = speed;
+        break;
+	case('S') :
+		tz = -speed;
+        break;
+	case('D') :
+		tx = -speed;
+        break;
+	case('A') :
+		tx = speed;
+        break;
+	case('Q') :
+		ty = speed;
+        break;
+	case('Z') :
+		ty = -speed;
+        break;
+    case('1'):
+        display_type = DISPLAY_DEPTH;
+        break;
+    case('2'):
+        display_type = DISPLAY_NORMAL;
+        break;
+    case('3'):
+        display_type = DISPLAY_COLOR;
+        break;
+    case('4'):
+        display_type = DISPLAY_POSITION;
+        break;
+    case('5'):
+        display_type = DISPLAY_LIGHTS;
+        break;
+    case('6'):
+        display_type = DISPLAY_GLOWMASK;
+        break;
+    case('0'):
+        display_type = DISPLAY_TOTAL;
+        break;
+    case('X'):
+        doIScissor ^= true;
+        break;
+    case('R'):
+        initShader();
+		break;
+	case('7'):
+        display_type = DISPLAY_SHADOW;
+		break;
+	case 'G':
+		indirectON = !indirectON;
+		break;
+	case ' ':
+		lightIdx = (lightIdx + 1) % context->VPLs.size();
+		break;
     }
 
     if (abs(tx) > 0 ||  abs(tz) > 0 || abs(ty) > 0) 
@@ -529,32 +502,31 @@ void init()
 }
 
 int main (int argc, char* argv[]) {
-	//Initialize our system context
-	context = SystemContext::initialize(
-		Camera(glm::vec3(300, 300, -500),
-			glm::normalize(glm::vec3(0, 0, 1)),
-			glm::normalize(glm::vec3(0, 1, 0))),
-		glm::uvec2(1280, 720)
-		);
-
-	context->pCam.set_perspective
-		(
-			glm::perspective
-			(
+	//Step 0: Initialize our system context
+	{
+		glm::uvec2 viewport(1280, 720);
+		Camera default_camera(
+			glm::vec3(300, 300, -500),
+			glm::vec3(0, 0, 1),
+			glm::vec3(0, 1, 0),
+			glm::perspective(
 				45.0f,
-				(float)context->viewport.x / (float)context->viewport.y,
-				NEARP,
-				FARP
+				float(viewport.x) / float(viewport.y),
+				kNearPlane,
+				kFarPlane
 				)
 			);
-	
-	//Load mesh into memory
+		context = SystemContext::initialize(default_camera, viewport);
+	}
+
+	//Step 1: Load mesh into memory
 	if (argc > 1) {
 		try {
 			context->loadObj(argv[1]);
 		}
 		catch(const std::exception &e) {
-			std::cerr << e.what();
+			std::cerr << "Mesh load failed. Reason: ";
+			std::cerr << e.what() << "\nAborting.\n";
 			return EXIT_FAILURE;
 		}
 	}
@@ -563,58 +535,61 @@ int main (int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-	//Initialize GLFW & GLEW
-	{
-		if (!glfwInit())
-			return EXIT_FAILURE;
+	//Step 2: Initialize GLFW & GLEW
+	//initialize glfw
+	if (!glfwInit()) {
+		std::cerr << "glfwInit() failed, aborting.\n";
+		return EXIT_FAILURE;
+	}
+	SCOPE_EXIT([]() { glfwTerminate(); });
+	
+	//create window
+	if (!(context->window = glfwCreateWindow(context->viewport.x, context->viewport.y, "InstantRadiosity", NULL, NULL))) {
+		std::cerr << "glfw window creation failed, aborting.\n";
+		return EXIT_FAILURE;
+	}
+	glfwMakeContextCurrent(context->window);
 
-		if (!(window = glfwCreateWindow(context->viewport.x, context->viewport.y, "InstantRadiosity", NULL, NULL)))
-		{
-			glfwTerminate();
-			return EXIT_FAILURE;
-		}
-		glfwMakeContextCurrent(window);
-
-		if (glewInit() != GLEW_OK)
-		{
-			/* Problem: glewInit failed, something is seriously wrong. */
-			std::cerr << "glewInit failed, aborting." << std::endl;
-			exit(1);
-		}
-
-		// Make sure OpenGL version.
-		if (!GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader)
-		{
-			std::cerr << "This program requires OpenGL 3.3 class graphics card." << std::endl;
-			return EXIT_FAILURE;
-		}
-
-		std::cerr << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
-		std::cerr << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
-
-		//callback
-		glfwSetWindowSizeCallback(window, reshape);
-		glfwSetKeyCallback(window, keyboard);
-		glfwSetCursorPosCallback(window, motion);
-		glfwSetMouseButtonCallback(window, mouse);
+	//set callbacks
+	glfwSetWindowSizeCallback(context->window, window_callback_size);
+	glfwSetKeyCallback(context->window, window_callback_key);
+	glfwSetCursorPosCallback(context->window, window_callback_cursor_pos);
+	glfwSetMouseButtonCallback(context->window, window_callback_mouse_button);
+	
+	//initialize glew
+	if (glewInit() != GLEW_OK) {
+		std::cerr << "glewInit() failed, aborting.\n";
+		return EXIT_FAILURE;
 	}
 	
-    //initNoise();
+	//check version requirement
+	//TODO: update correct requirement later
+	if (!GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader)
+	{
+		std::cerr << "This program requires OpenGL 3.3 class graphics card." << std::endl;
+		return EXIT_FAILURE;
+	}
+	else {
+		std::cerr << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
+		std::cerr << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
+	}
+	
+	//Step 3: Initialize objects
+	//initNoise();
     initShader();
     init();
 	initQuad();
 	fboInit(); 
 	context->initMesh();
 
-	while (!glfwWindowShouldClose(window)) {
-		display();
+	//Step 4: Main loop
+	while (!glfwWindowShouldClose(context->window)) {
+		RenderForward();
+		update_title();
 
-		glfwSwapBuffers(window);
+		glfwSwapBuffers(context->window);
 		glfwPollEvents();
 	}
 
-	glfwTerminate();
-
-    
     return EXIT_SUCCESS;
 }

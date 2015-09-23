@@ -8,6 +8,9 @@
 #include <exception>
 #include "InstantRadiosity.h"
 
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 class DeviceMesh;
 
 class SystemContext
@@ -35,6 +38,7 @@ protected:
 	
 public:
 	std::vector<DeviceMesh> drawMeshes;
+	GLFWwindow *window;
 	Camera pCam;
 	glm::uvec2 viewport;
 	std::vector<LightData> VPLs;
