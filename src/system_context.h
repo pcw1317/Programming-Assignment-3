@@ -14,52 +14,49 @@
 
 class DeviceMesh;
 
-class system_context
-{
-public:
-	~system_context()
-	{
-		delete irKernel;
-	}
+class system_context {
+  public:
+    ~system_context() {}
+    system_context(const system_context&) = delete;
+    system_context& operator=(const system_context&) = delete;
+    system_context(system_context&&) = delete;
+    system_context& operator=(system_context&&) = delete;
 
-	void loadObj(char *path);
-	void initMesh();
-	std::vector<tinyobj::shape_t>::iterator shapesBeginIter() { return shapes.begin(); }
-	std::vector<tinyobj::shape_t>::iterator shapesEndIter() { return shapes.end(); }
+    void load_mesh(const char *path);
 
-protected:
-	system_context(const Camera &pCam, const glm::uvec2 &viewport) :
-		pCam(pCam), viewport(viewport)
-	{
-		irKernel = new InstantRadiosityEmbree();
-	}
-	std::vector<tinyobj::shape_t> shapes;
-	InstantRadiosityEmbree *irKernel;
-	AreaLightData light;
-	
-public:
-	std::vector<DeviceMesh> drawMeshes;
-	GLFWwindow *window;
-	Camera pCam;
-	glm::uvec2 viewport;
-	std::vector<LightData> VPLs;
+  protected:
+    system_context(const Camera &pCam, const glm::uvec2 &viewport) :
+        pCam(pCam), viewport(viewport), shown_vpl_index(0), irKernel(new InstantRadiosityEmbree()) {
+    }
+    std::unique_ptr<InstantRadiosityEmbree> irKernel;
+    AreaLightData light;
 
-	std::vector<gls::program> gls_programs;
-	std::vector<gls::buffer> gls_buffers;
-	std::vector<gls::vertex_array> gls_vertex_arrays;
-	std::vector<gls::framebuffer<gls::texture, gls::texture> > gls_framebuffers;
+  public:
+    std::vector<DeviceMesh> drawMeshes;
+    GLFWwindow *window;
+    Camera pCam;
+    glm::uvec2 viewport;
+    std::vector<LightData> VPLs;
 
-protected:
-	static std::unique_ptr<system_context> global_context_;
-public:
-	template<typename... Args>
-	static system_context* initialize(Args&&... args) {
-		assert(global_context_.get() == nullptr);
-		global_context_.reset(new system_context(std::forward<Args>(args)...));
-		return global_context_.get();
-	}
-	static system_context* get() {
-		assert(global_context_.get() != nullptr);
-		return global_context_.get();
-	}
+    //gls objects
+    std::vector<gls::program> gls_programs;
+    std::vector<gls::buffer> gls_buffers;
+    std::vector<gls::vertex_array> gls_vertex_arrays;
+    std::vector<gls::framebuffer<gls::texture, gls::texture> > gls_framebuffers;
+
+    unsigned int shown_vpl_index;
+
+  protected:
+    static std::unique_ptr<system_context> global_context_;
+  public:
+    template<typename... Args>
+    static system_context* initialize(Args&&... args) {
+        assert(global_context_.get() == nullptr);
+        global_context_.reset(new system_context(std::forward<Args>(args)...));
+        return global_context_.get();
+    }
+    static system_context* get() {
+        assert(global_context_.get() != nullptr);
+        return global_context_.get();
+    }
 };

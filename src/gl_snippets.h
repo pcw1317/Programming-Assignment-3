@@ -395,7 +395,7 @@ namespace gls {
 			return *this;
 		}
 
-		void set_attribute(GLuint index, buffer &buf, GLint element_dimension, GLenum element_type, bool normalize, GLsizei stride, GLsizei offset) {
+		void set_attribute(GLuint index, buffer &buf, GLint element_dimension, GLenum element_type, bool normalize, GLsizei stride, std::uintptr_t offset) {
 			_gls_detail::check_bound(*this);
 			assert(buf.target() == GL_ARRAY_BUFFER);			
 			glEnableVertexAttribArray(index);
@@ -540,6 +540,27 @@ namespace gls {
 		
 		return tex;
 	}
+
+
+#	define GLS_CHECK_ERROR()\
+	{\
+		GLenum err = glGetError();\
+		if (err != GL_NO_ERROR)\
+		{\
+			for (; err != GL_NO_ERROR; err = glGetError())\
+			{\
+				switch (err)\
+				{\
+					case GL_INVALID_ENUM: printf("GL_INVALID_ENUM, "); break;\
+					case GL_INVALID_OPERATION: printf("GL_INVALID_OPERATION, "); break;\
+					case GL_INVALID_VALUE: printf("GL_INVALID_VALUE, "); break;\
+					case GL_OUT_OF_MEMORY: printf("GL_OUT_OF_MEMORY, "); break;\
+					default: printf("OpenGL Error Code: %d, ", err);\
+				}\
+			}\
+		}\
+	}
+
 }
 
 #endif
