@@ -4,6 +4,7 @@
 #include "Light.h"
 #include "system_context.h"
 #include "DeviceMesh.h"	// ad hoc
+#include "gl_snippets.h"
 
 #include <SOIL/SOIL.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -22,16 +23,14 @@
 
 #include "InstantRadiosity.h"
 
-const float PI = 3.14159f;
-
-bool indirectON = false, DOFEnabled = false, DOFDebug = false;
+constexpr float PI = 3.14159f;
+constexpr float kFarPlane = 2000.f;
+constexpr float kNearPlane = 0.1f;
 
 int mouse_buttons = 0;
 int mouse_old_x = 0, mouse_dof_x = 0;
 int mouse_old_y = 0, mouse_dof_y = 0;
 
-constexpr float kFarPlane = 2000.f;
-constexpr float kNearPlane = 0.1f;
 
 std::list<LightData> lightList;
 std::default_random_engine random_gen ((unsigned int)(time (NULL)));
@@ -84,7 +83,6 @@ GLuint forward_shading_prog = 0;
 
 void shaderInit() 
 {
-#ifdef WIN32
 	// Vertex shaders
 	const char *pass_vert = "res/shaders/forward_vert.glsl";
 	const char *post_vert = "res/shaders/post.vert";
@@ -92,13 +90,10 @@ void shaderInit()
 	// Fragment shaders
 	const char *forward_frag = "res/shaders/forward_frag.glsl";
 	const char *post_frag = "res/shaders/post.frag";
-#else
-	// Common shaders
-	const char * pass_vert = "../res/shaders/forward_vert.vert";
 
-	// Forward shaders
-	const char * forward_frag = "res/shaders/forward_frag.glsl";
-#endif
+	std::unique_ptr<gls::program> programs[PROG_MAX];
+	programs[PROG_SCENEDRAW].reset(new gls::program(kProgramSceneDraw));
+
 	{
 		utility::shaders_t shaders = utility::loadShaders(pass_vert, forward_frag);
 		progs[PROG_SCENEDRAW] = glCreateProgram();
@@ -106,6 +101,7 @@ void shaderInit()
 		glBindAttribLocation(progs[PROG_SCENEDRAW], mesh_attributes::NORMAL, "Normal");
 		utility::attachAndLinkProgram(progs[PROG_SCENEDRAW], shaders);
 		glBindFragDataLocation(progs[PROG_SCENEDRAW], 0, "outColor");
+
 	}
 	{
 		utility::shaders_t shaders = utility::loadShaders(post_vert, post_frag);
@@ -195,7 +191,6 @@ void draw_mesh_forward ()
 {
     glm::mat4 model = get_mesh_world();
 	glm::mat4 view,lview, persp, lpersp;
-
 
 	view = context->pCam.get_view(); // Camera view Matrix
 	persp = glm::perspective(45.0f, (float)context->viewport.x / (float)context->viewport.y, kNearPlane, kFarPlane);
@@ -308,12 +303,6 @@ void draw_quad()
     glBindVertexArray(0);
 }
 
-int frame = 0;
-int currenttime = 0;
-int timebase = 0;
-char disp[1024];
-char occl[1024];
-
 void update_title() 
 {
 	//FPS calculation
@@ -351,10 +340,8 @@ void update_title()
 			break;
 		}
 
-		std::string title = utility::sprintfpp("CS482 Instant Radiosity | Displaying <%s>, GI %s, DOF %s | FPS: %4.2f",
+		std::string title = utility::sprintfpp("CS482 Instant Radiosity | Displaying <%s> | FPS: %4.2f",
 			displaying,
-			indirectON ? "on" : "off",
-			DOFEnabled ? "on" : "off",
 			frame / (time_now - time_base)
 			);
 
@@ -365,9 +352,7 @@ void update_title()
 	}
 }
 
-bool doIScissor = true;
-
-void RenderForward ()
+void render_forward ()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
@@ -479,19 +464,13 @@ void window_callback_key(GLFWwindow *window, int key, int scancode, int action, 
     case('0'):
         display_type = DISPLAY_TOTAL;
         break;
-    case('X'):
-        doIScissor ^= true;
-        break;
     case('R'):
         shaderInit();
 		break;
 	case('7'):
         display_type = DISPLAY_SHADOW;
 		break;
-	case 'G':
-		indirectON = !indirectON;
-		break;
-	case ' ':
+	case(' '):
 		lightIdx = (lightIdx + 1) % context->VPLs.size();
 		break;
     }
@@ -510,21 +489,20 @@ void init()
 
 namespace {
 	//opengl initialization: GLFW, GLEW and our application window
-	class opengl_raii_t {
+	class opengl_initializer_t {
 	public:
-		opengl_raii_t();
-		opengl_raii_t(const opengl_raii_t&) = delete;
-		opengl_raii_t& operator=(const opengl_raii_t&) = delete;
-		~opengl_raii_t();
-		opengl_raii_t(opengl_raii_t&&) = delete;
-		opengl_raii_t& operator=(opengl_raii_t&&) = delete;
+		opengl_initializer_t();
+		opengl_initializer_t(const opengl_initializer_t&) = delete;
+		opengl_initializer_t& operator=(const opengl_initializer_t&) = delete;
+		~opengl_initializer_t();
+		opengl_initializer_t(opengl_initializer_t&&) = delete;
+		opengl_initializer_t& operator=(opengl_initializer_t&&) = delete;
 	};
 
-	opengl_raii_t::opengl_raii_t() {
+	opengl_initializer_t::opengl_initializer_t() {
 		//initialize glfw
-		if (!glfwInit()) {
+		if (!glfwInit())
 			throw std::runtime_error("glfwInit() failed");
-		}
 
 		try {
 			//create window
@@ -556,7 +534,7 @@ namespace {
 			throw;
 		}
 	}
-	opengl_raii_t::~opengl_raii_t() {
+	opengl_initializer_t::~opengl_initializer_t() {
 		glfwTerminate();
 	}
 }
@@ -595,9 +573,9 @@ int main(int argc, char* argv[]) {
 
 	//Step 2: Initialize GLFW & GLEW
 	//RAII initialization of GLFW, GLEW and our application window
-	std::unique_ptr<opengl_raii_t> opengl_raii;
+	std::unique_ptr<opengl_initializer_t> opengl_initializer;
 	try {
-		opengl_raii.reset(new opengl_raii_t);
+		opengl_initializer.reset(new opengl_initializer_t);
 	}
 	catch(const std::exception &e) {
 		std::cerr << "OpenGL initialization failed. Reason: " << e.what() << "\nAborting.\n";
@@ -609,12 +587,12 @@ int main(int argc, char* argv[]) {
 	shaderInit();
     init();
 	initQuad();
-	fboInit(); 
+	fboInit();
 	context->initMesh();
 
 	//Step 4: Main loop
 	while (!glfwWindowShouldClose(context->window)) {
-		RenderForward();
+		render_forward();
 		update_title();
 
 		glfwSwapBuffers(context->window);

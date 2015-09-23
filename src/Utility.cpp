@@ -8,32 +8,17 @@
 namespace utility
 {
 
-	char* loadFile(const char *fname, GLint &fSize)
+	std::string read_file(const char *fname)
 	{
-		std::ifstream::pos_type size;
-		char * memblock;
-		std::string text;
-
-		// file read based on example in cplusplus.com tutorial
 		std::ifstream file(fname, std::ios::in | std::ios::binary | std::ios::ate);
-		if (file.is_open())
-		{
-			size = file.tellg();
-			fSize = (GLuint)size;
-			memblock = new char[size];
-			file.seekg(0, std::ios::beg);
-			file.read(memblock, size);
-			file.close();
-			std::cout << "file " << fname << " loaded" << std::endl;
-			text.assign(memblock);
-		}
-		else
-		{
-			std::cout << "Unable to open file " << fname << std::endl;
-			std::cin.get();
-			exit(1);
-		}
-		return memblock;
+		if (!file.is_open())
+			throw std::runtime_error(utility::sprintfpp("Unable to open file %s", fname).c_str());
+
+		std::string text;
+		text.resize(file.tellg());
+		file.seekg(0);
+		file.read(&text[0], text.size());
+		return text;	
 	}
 
 	// printShaderInfoLog
@@ -85,22 +70,22 @@ namespace utility
 	{
 		GLuint f, v;
 
-		char *vs, *fs;
+		std::string vs, fs;
 
 		v = glCreateShader(GL_VERTEX_SHADER);
 		f = glCreateShader(GL_FRAGMENT_SHADER);
 
 		// load shaders & get length of each
-		GLint vlen;
-		GLint flen;
-		vs = loadFile(vert_path, vlen);
-		fs = loadFile(frag_path, flen);
+		vs = read_file(vert_path);
+		fs = read_file(frag_path);
 
-		const char * vv = vs;
-		const char * ff = fs;
+		const char * vv = vs.c_str();
+		const char * ff = fs.c_str();
 
-		glShaderSource(v, 1, &vv, &vlen);
-		glShaderSource(f, 1, &ff, &flen);
+		GLint vvlen = vs.size(), fflen = fs.size();
+
+		glShaderSource(v, 1, &vv, &vvlen);
+		glShaderSource(f, 1, &ff, &fflen);
 
 		GLint compiled;
 
@@ -121,9 +106,6 @@ namespace utility
 		}
 		shaders_t out; out.vertex = v; out.fragment = f;
 
-		delete[] vs; // dont forget to free allocated memory
-		delete[] fs; // we allocated this in the loadFile function...
-
 		return out;
 	}
 
@@ -131,17 +113,18 @@ namespace utility
 	{
 		GLuint c;
 
-		char *cs;
+		std::string cs;
 
 		c = glCreateShader(GL_COMPUTE_SHADER);
 
 		// load shader & get its length
-		GLint clen;
-		cs = loadFile(compute_path, clen);
+		cs = read_file(compute_path);
 
-		const char * cc = cs;
+		const char * cc = cs.c_str();
 
-		glShaderSource(c, 1, &cc, &clen);
+		GLint cclen = cs.size();
+
+		glShaderSource(c, 1, &cc, &cclen);
 
 		GLint compiled;
 
@@ -153,8 +136,6 @@ namespace utility
 			printShaderInfoLog(c);
 		}
 
-		delete[] cs;	// dont forget to free allocated memory
-						// we allocated this in the loadFile function...
 		return c;
 	}
 

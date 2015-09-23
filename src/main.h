@@ -5,8 +5,30 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <cstring>
-
 #include <tiny_obj_loader/tiny_obj_loader.h>
+
+#include "gl_snippets.h"
+
+//GL shader/program definitions
+GLS_PROGRAM_DEFINE(
+	kProgramSceneDraw,
+	"res/shaders/forward_vert.glsl",
+	"res/shaders/forward_frag.glsl",
+	{ "Position", "Normal" },
+	{ "outColor" },
+	{ "u_ModelMat", "u_ViewMat" , "u_PerspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_AmbientColor", "u_DiffuseColor" }
+
+);
+
+constexpr float PI = 3.14159f;
+constexpr float kFarPlane = 2000.f;
+constexpr float kNearPlane = 0.1f;
+
+
+
+
+
+
 
 enum Textures
 {

@@ -22,7 +22,7 @@ namespace utility
 	void attachAndLinkProgram( GLuint program, shaders_t shaders);
 	void attachAndLinkCSProgram (GLuint program, GLuint cshader);
 
-	char* loadFile(const char *fname, GLint &fSize);
+	std::string read_file(const char *fname);
 
 	// printShaderInfoLog
 	// From OpenGL Shading Language 3rd Edition, p215-216
