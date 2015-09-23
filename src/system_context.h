@@ -13,10 +13,10 @@
 
 class DeviceMesh;
 
-class SystemContext
+class system_context
 {
 public:
-	~SystemContext()
+	~system_context()
 	{
 		delete irKernel;
 	}
@@ -27,7 +27,7 @@ public:
 	std::vector<tinyobj::shape_t>::iterator shapesEndIter() { return shapes.end(); }
 
 protected:
-	SystemContext(const Camera &pCam, const glm::uvec2 &viewport) :
+	system_context(const Camera &pCam, const glm::uvec2 &viewport) :
 		pCam(pCam), viewport(viewport)
 	{
 		irKernel = new InstantRadiosityEmbree();
@@ -44,15 +44,15 @@ public:
 	std::vector<LightData> VPLs;
 
 protected:
-	static std::unique_ptr<SystemContext> global_context_;
+	static std::unique_ptr<system_context> global_context_;
 public:
 	template<typename... Args>
-	static SystemContext* initialize(Args&&... args) {
+	static system_context* initialize(Args&&... args) {
 		assert(global_context_.get() == nullptr);
-		global_context_.reset(new SystemContext(std::forward<Args>(args)...));
+		global_context_.reset(new system_context(std::forward<Args>(args)...));
 		return global_context_.get();
 	}
-	static SystemContext* get() {
+	static system_context* get() {
 		assert(global_context_.get() != nullptr);
 		return global_context_.get();
 	}

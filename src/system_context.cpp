@@ -1,12 +1,12 @@
-#include "SystemContext.h"
+#include "system_context.h"
 #include <sstream>
 #include <iostream>
 #include "Mesh.h"
 #include "DeviceMesh.h"
 
-std::unique_ptr<SystemContext> SystemContext::global_context_ = nullptr;
+std::unique_ptr<system_context> system_context::global_context_ = nullptr;
 
-void SystemContext::loadObj(char *path)
+void system_context::loadObj(char *path)
 {
 	std::string header, data, err;
 	std::istringstream liness(path);
@@ -22,7 +22,7 @@ void SystemContext::loadObj(char *path)
 		throw std::runtime_error(err.c_str());
 }
 
-void SystemContext::initMesh()
+void system_context::initMesh()
 {
 	for (const auto &shape : shapes)
 	{

@@ -2,7 +2,7 @@
 
 #include "Utility.h"
 #include "Light.h"
-#include "SystemContext.h"
+#include "system_context.h"
 #include "DeviceMesh.h"	// ad hoc
 
 #include <SOIL/SOIL.h>
@@ -36,7 +36,7 @@ constexpr float kNearPlane = 0.1f;
 std::list<LightData> lightList;
 std::default_random_engine random_gen ((unsigned int)(time (NULL)));
 
-SystemContext *context;
+system_context *context;
 
 glm::mat4 get_mesh_world ();
 
@@ -86,12 +86,12 @@ void shaderInit()
 {
 #ifdef WIN32
 	// Vertex shaders
-	const char *pass_vert = "../../../res/shaders/forward_vert.glsl";
-	const char *post_vert = "../../../res/shaders/post.vert";
+	const char *pass_vert = "res/shaders/forward_vert.glsl";
+	const char *post_vert = "res/shaders/post.vert";
 	
 	// Fragment shaders
-	const char *forward_frag = "../../../res/shaders/forward_frag.glsl";
-	const char *post_frag = "../../../res/shaders/post.frag";
+	const char *forward_frag = "res/shaders/forward_frag.glsl";
+	const char *post_frag = "res/shaders/post.frag";
 #else
 	// Common shaders
 	const char * pass_vert = "../res/shaders/forward_vert.vert";
@@ -221,7 +221,7 @@ void draw_mesh_forward ()
 		glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), 0);
 	*/
 	{
-		using namespace glm::gtc::type_ptr;
+		using glm::value_ptr;
 
 		glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, value_ptr(model));
 		glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, value_ptr(view));
@@ -324,24 +324,31 @@ void update_title()
 
 	if (time_now - time_base > 1.0) {//update title if a second passes
 		const char *displaying;
-		switch (display_type)
-		{
+		switch (display_type) {
 		case(DISPLAY_DEPTH) :
 			displaying = "Depth";
+			break;
 		case(DISPLAY_NORMAL) :
 			displaying = "Normal";
+			break;
 		case(DISPLAY_COLOR) :
 			displaying = "Color";
+			break;
 		case(DISPLAY_POSITION) :
 			displaying = "Position";
+			break;
 		case(DISPLAY_TOTAL) :
 			displaying = "Diffuse";
+			break;
 		case(DISPLAY_LIGHTS) :
 			displaying = "Lights";
+			break;
 		case DISPLAY_GLOWMASK:
 			displaying = "Glow Mask";
+			break;
 		case(DISPLAY_SHADOW) :
 			displaying = "ShadowMap";
+			break;
 		}
 
 		std::string title = utility::sprintfpp("CS482 Instant Radiosity | Displaying <%s>, GI %s, DOF %s | FPS: %4.2f",
@@ -476,7 +483,7 @@ void window_callback_key(GLFWwindow *window, int key, int scancode, int action, 
         doIScissor ^= true;
         break;
     case('R'):
-        initShader();
+        shaderInit();
 		break;
 	case('7'):
         display_type = DISPLAY_SHADOW;
@@ -501,7 +508,59 @@ void init()
     glClearColor(0.0f, 0.0f, 0.0f,1.0f);
 }
 
-int main (int argc, char* argv[]) {
+namespace {
+	//opengl initialization: GLFW, GLEW and our application window
+	class opengl_raii_t {
+	public:
+		opengl_raii_t();
+		opengl_raii_t(const opengl_raii_t&) = delete;
+		opengl_raii_t& operator=(const opengl_raii_t&) = delete;
+		~opengl_raii_t();
+		opengl_raii_t(opengl_raii_t&&) = delete;
+		opengl_raii_t& operator=(opengl_raii_t&&) = delete;
+	};
+
+	opengl_raii_t::opengl_raii_t() {
+		//initialize glfw
+		if (!glfwInit()) {
+			throw std::runtime_error("glfwInit() failed");
+		}
+
+		try {
+			//create window
+			if (!(context->window = glfwCreateWindow(context->viewport.x, context->viewport.y, "InstantRadiosity", NULL, NULL)))
+				throw std::runtime_error("glfw window creation failed");
+			glfwMakeContextCurrent(context->window);
+
+			//set callbacks
+			glfwSetWindowSizeCallback(context->window, window_callback_size);
+			glfwSetKeyCallback(context->window, window_callback_key);
+			glfwSetCursorPosCallback(context->window, window_callback_cursor_pos);
+			glfwSetMouseButtonCallback(context->window, window_callback_mouse_button);
+
+			//initialize glew
+			if (glewInit() != GLEW_OK)
+				throw std::runtime_error("glewInit() failed");
+
+			//check version requirement
+			//TODO: update correct requirement later
+			if (!GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader)
+				throw std::runtime_error("This program requires OpenGL 3.3 class graphics card.");
+			else {
+				std::cerr << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
+				std::cerr << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
+			}
+		}
+		catch (...) {
+			glfwTerminate();
+			throw;
+		}
+	}
+	opengl_raii_t::~opengl_raii_t() {
+		glfwTerminate();
+	}
+}
+int main(int argc, char* argv[]) {
 	//Step 0: Initialize our system context
 	{
 		glm::uvec2 viewport(1280, 720);
@@ -516,7 +575,7 @@ int main (int argc, char* argv[]) {
 				kFarPlane
 				)
 			);
-		context = SystemContext::initialize(default_camera, viewport);
+		context = system_context::initialize(default_camera, viewport);
 	}
 
 	//Step 1: Load mesh into memory
@@ -524,59 +583,30 @@ int main (int argc, char* argv[]) {
 		try {
 			context->loadObj(argv[1]);
 		}
-		catch(const std::exception &e) {
-			std::cerr << "Mesh load failed. Reason: ";
-			std::cerr << e.what() << "\nAborting.\n";
+		catch (const std::exception &e) {
+			std::cerr << "Mesh load failed. Reason: " << e.what() << "\nAborting.\n";
 			return EXIT_FAILURE;
 		}
 	}
 	else {
 		std::cerr << utility::sprintfpp("Usage: %s mesh=[obj file]\n", argv[0]);
-        return EXIT_SUCCESS;
-    }
+		return EXIT_SUCCESS;
+	}
 
 	//Step 2: Initialize GLFW & GLEW
-	//initialize glfw
-	if (!glfwInit()) {
-		std::cerr << "glfwInit() failed, aborting.\n";
-		return EXIT_FAILURE;
+	//RAII initialization of GLFW, GLEW and our application window
+	std::unique_ptr<opengl_raii_t> opengl_raii;
+	try {
+		opengl_raii.reset(new opengl_raii_t);
 	}
-	SCOPE_EXIT([]() { glfwTerminate(); });
-	
-	//create window
-	if (!(context->window = glfwCreateWindow(context->viewport.x, context->viewport.y, "InstantRadiosity", NULL, NULL))) {
-		std::cerr << "glfw window creation failed, aborting.\n";
+	catch(const std::exception &e) {
+		std::cerr << "OpenGL initialization failed. Reason: " << e.what() << "\nAborting.\n";
 		return EXIT_FAILURE;
-	}
-	glfwMakeContextCurrent(context->window);
-
-	//set callbacks
-	glfwSetWindowSizeCallback(context->window, window_callback_size);
-	glfwSetKeyCallback(context->window, window_callback_key);
-	glfwSetCursorPosCallback(context->window, window_callback_cursor_pos);
-	glfwSetMouseButtonCallback(context->window, window_callback_mouse_button);
-	
-	//initialize glew
-	if (glewInit() != GLEW_OK) {
-		std::cerr << "glewInit() failed, aborting.\n";
-		return EXIT_FAILURE;
-	}
-	
-	//check version requirement
-	//TODO: update correct requirement later
-	if (!GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader)
-	{
-		std::cerr << "This program requires OpenGL 3.3 class graphics card." << std::endl;
-		return EXIT_FAILURE;
-	}
-	else {
-		std::cerr << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
-		std::cerr << "OpenGL version " << glGetString(GL_VERSION) << " supported" << std::endl;
 	}
 	
 	//Step 3: Initialize objects
 	//initNoise();
-    initShader();
+	shaderInit();
     init();
 	initQuad();
 	fboInit(); 

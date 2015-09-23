@@ -53,13 +53,13 @@ namespace utility
 		};
 #		define SCOPE_EXIT_STRJOIN(a, b) SCOPE_EXIT_STRJOIN_INDIRECT(a, b)
 #		define SCOPE_EXIT_STRJOIN_INDIRECT(a, b) a ## b
-		template <typename ExitFuncType>
-		scope_guard<ExitFuncType> scope_exit(ExitFuncType f) {
-			return scope_guard<ExitFuncType>(f);
-		};
 	}
 
-#define SCOPE_EXIT(f) auto SCOPE_EXIT_STRJOIN(_scope_exit_, __LINE__) = utility::_scope_exit_detail::scope_exit(f)
+	template <typename ExitFuncType>
+	_scope_exit_detail::scope_guard<ExitFuncType> scope_exit(ExitFuncType f) {
+		return _scope_exit_detail::scope_guard<ExitFuncType>(f);
+	};
+#define SCOPE_EXIT(f) auto SCOPE_EXIT_STRJOIN(_scope_exit_, __LINE__) = utility::scope_exit(f)
 
 
 }
