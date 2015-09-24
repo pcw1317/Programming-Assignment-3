@@ -162,4 +162,5 @@ $RECYCLE.BIN/
 # Vim stuff
 *.swp
 *.dll
-shared32/glm/doc/
+
+!contrib/**
