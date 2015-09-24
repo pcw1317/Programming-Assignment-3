@@ -1,5 +1,6 @@
 #include "main.h"
 
+
 #include "Utility.h"
 #include "Light.h"
 #include "system_context.h"
@@ -128,7 +129,7 @@ void update_title() {
 }
 
 void render_forward() {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	context->gls_framebuffers[kGlsFramebufferScreen].bind();
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
     glm::mat4 model = get_mesh_world();
@@ -147,19 +148,18 @@ void render_forward() {
         context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(0 /*u_ModelMat*/, model, view, perspective);
         context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		context->gls_framebuffers[kGlsFramebufferScreen].bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         for(int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter) {
             context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(3 /*u_vplPosition*/, context->VPLs[lightIter].position, context->VPLs[lightIter].intensity, context->VPLs[lightIter].direction);
 
             context->gls_programs[kGlsProgramSceneDraw].bind();
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			context->gls_framebuffers[kGlsFramebufferScreen].bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             for(int i = 0; i < context->drawMeshes.size(); i++) {
                 context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(7 /*u_AmbientColor*/, context->drawMeshes[i].ambient_color, context->drawMeshes[i].diffuse_color);
-                glBindVertexArray(context->drawMeshes[i].vertex_array);
-                glDrawElements(GL_TRIANGLES, context->drawMeshes[i].num_indices, GL_UNSIGNED_SHORT, 0);
+                context->drawMeshes[i].draw();
             }
 
             /*
@@ -320,6 +320,7 @@ void init() {
     context->gls_programs[kGlsProgramQuadDraw] = gls::program(kProgramQuadDraw);
 
     //framebuffers
+	context->gls_framebuffers[kGlsFramebufferScreen] = gls::framebuffer<gls::texture, gls::texture>(); //default screen framebuffer
     context->gls_framebuffers[kGlsFramebufferSceneDraw] = gls::framebuffer<gls::texture, gls::texture>(context->viewport.x, context->viewport.y);
     context->gls_framebuffers[kGlsFramebufferAccumulate] = gls::framebuffer<gls::texture, gls::texture>(context->viewport.x, context->viewport.y);
     context->gls_framebuffers[kGlsFramebufferAccumulate].unbind();

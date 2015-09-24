@@ -50,6 +50,7 @@ enum gls_vertex_array_t {
 };
 
 enum gls_framebuffer_t {
+	kGlsFramebufferScreen,
     kGlsFramebufferSceneDraw,
     kGlsFramebufferAccumulate,
     kGlsFramebufferMax

@@ -1,26 +1,26 @@
-#pragma once
+#ifndef _SYSTEM_CONTEXT_H_
+#define _SYSTEM_CONTEXT_H_
 
 #include <vector>
 #include <cassert>
 #include <memory>
-#include <tiny_obj_loader/tiny_obj_loader.h>
-#include "camera.h"
 #include <exception>
-#include "InstantRadiosity.h"
-
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include "gl_snippets.h"
+#include <tiny_obj_loader/tiny_obj_loader.h>
+#include <gl_snippets.h>
+#include <camera.h>
+#include <InstantRadiosity.h>
 
 class device_mesh_t;
 
 class system_context {
   public:
     ~system_context() {}
-    system_context(const system_context&) = delete;
-    system_context& operator=(const system_context&) = delete;
-    system_context(system_context&&) = delete;
-    system_context& operator=(system_context&&) = delete;
+    system_context(const system_context &) = delete;
+    system_context &operator=(const system_context &) = delete;
+    system_context(system_context &&) = delete;
+    system_context &operator=(system_context &&) = delete;
 
     void load_mesh(const char *path);
 
@@ -50,13 +50,15 @@ class system_context {
     static std::unique_ptr<system_context> global_context_;
   public:
     template<typename... Args>
-    static system_context* initialize(Args&&... args) {
+    static system_context *initialize(Args &&... args) {
         assert(global_context_.get() == nullptr);
         global_context_.reset(new system_context(std::forward<Args>(args)...));
         return global_context_.get();
     }
-    static system_context* get() {
+    static system_context *get() {
         assert(global_context_.get() != nullptr);
         return global_context_.get();
     }
 };
+
+#endif

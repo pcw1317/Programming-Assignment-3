@@ -2,62 +2,63 @@
 #include "host_mesh.h"
 #include <GL/glew.h>
 
-device_mesh_t device_mesh_t::deviceMeshFromMesh(const host_mesh_t &mesh) {
-    unsigned int vertex_array;
-    unsigned int vbo_indices;
-    unsigned int num_indices;
-    unsigned int vbo_vertices;
-    unsigned int vbo_normals;
-    unsigned int vbo_texcoords;
-    glm::vec3 ambient_color;
-    glm::vec3 diffuse_color;
-    std::string texture_name;
+namespace {
 
-    //Allocate vertex array
-    //Vertex arrays encapsulate a set of generic vertex
-    //attributes and the buffers they are bound to
-    //Different vertex array per mesh.
-    glGenVertexArrays(1, &vertex_array);
-    glBindVertexArray(vertex_array);
+void setup_vertex_array(device_mesh_t &dm) {
+	dm.vertex_array.bind();
+	dm.vertex_array.set_attribute(device_mesh_t::vertex_attributes::position, dm.vbo_vertices, 3, GL_FLOAT, false, 0, 0);
+	dm.vertex_array.set_attribute(device_mesh_t::vertex_attributes::normal, dm.vbo_normals, 3, GL_FLOAT, false, 0, 0);
+	dm.vertex_array.set_attribute(device_mesh_t::vertex_attributes::texcoord, dm.vbo_texcoords, 2, GL_FLOAT, false, 0, 0);
+	dm.vertex_array.unbind();
+}
 
-    //Allocate vbos for data
-    glGenBuffers(1, &vbo_vertices);
-    glGenBuffers(1, &vbo_normals);
-    glGenBuffers(1, &vbo_indices);
-    glGenBuffers(1, &vbo_texcoords);
+}
 
-    //Upload vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices);
-    glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size()*sizeof(glm::vec3),
-                 &mesh.vertices[0], GL_STATIC_DRAW);
-    glVertexAttribPointer(mesh_attributes::POSITION, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(mesh_attributes::POSITION);
+device_mesh_t::device_mesh_t( gls::buffer &&vbo_indices,
+                              gls::buffer &&vbo_vertices,
+                              gls::buffer &&vbo_normals,
+                              gls::buffer &&vbo_texcoords,
+                              glm::vec3 &&ambient_color,
+                              glm::vec3 &&diffuse_color,
+                              std::string &&texture_name
+                            ) :
+    vbo_indices( std::move( vbo_indices ) ),
+    vbo_vertices( std::move( vbo_vertices ) ),
+    vbo_normals( std::move( vbo_normals ) ),
+    vbo_texcoords( std::move( vbo_texcoords ) ),
+    ambient_color( std::move( ambient_color ) ),
+    diffuse_color( std::move( diffuse_color ) ),
+    texture_name( std::move( texture_name ) ) {
+	setup_vertex_array(*this);
+}
 
-    //Upload normal data
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
-    glBufferData(GL_ARRAY_BUFFER, mesh.normals.size()*sizeof(glm::vec3),
-                 &mesh.normals[0], GL_STATIC_DRAW);
-    glVertexAttribPointer(mesh_attributes::NORMAL, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(mesh_attributes::NORMAL);
-
-    //Upload texture coord data
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_texcoords);
-    glBufferData(GL_ARRAY_BUFFER, mesh.texcoords.size()*sizeof(glm::vec2),
-                 &mesh.texcoords[0], GL_STATIC_DRAW);
-    glVertexAttribPointer(mesh_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(mesh_attributes::TEXCOORD);
+device_mesh_t::device_mesh_t( const host_mesh_t &mesh ) {
+	vbo_indices = gls::buffer(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW);
+	vbo_vertices = gls::buffer(GL_ARRAY_BUFFER, GL_STATIC_DRAW);
+	vbo_normals = gls::buffer(GL_ARRAY_BUFFER, GL_STATIC_DRAW);
+	vbo_texcoords = gls::buffer(GL_ARRAY_BUFFER, GL_STATIC_DRAW);
+    
+    //vertices
+	vbo_vertices.bind();
+	vbo_vertices.set_data(mesh.vertices);
+	vbo_normals.bind();
+	vbo_normals.set_data(mesh.normals);
+	vbo_texcoords.bind();
+	vbo_texcoords.set_data(mesh.texcoords);
 
     //indices
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size()*sizeof(GLushort),
-                 &mesh.indices[0], GL_STATIC_DRAW);
-    num_indices = mesh.indices.size();
-    //Unplug Vertex Array
-    glBindVertexArray(0);
+	vbo_indices.bind();
+	vbo_indices.set_data(mesh.indices);
 
     texture_name = mesh.texture_name;
     ambient_color = mesh.ambient_color;
     diffuse_color = mesh.diffuse_color;
 
-    return device_mesh_t(vertex_array, vbo_indices, num_indices, vbo_vertices, vbo_normals, vbo_texcoords, ambient_color, diffuse_color, texture_name);
+	setup_vertex_array(*this);
+}
+
+void device_mesh_t::draw() {
+	vertex_array.bind();
+	vbo_indices.bind();
+	glDrawElements(GL_TRIANGLES, vbo_indices.num_elements(), GL_UNSIGNED_SHORT, 0);
 }

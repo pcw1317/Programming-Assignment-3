@@ -17,13 +17,13 @@ namespace _gls_detail {
 
 template<typename T>
 inline void check_bound(const T &obj) {
-#			if defined(_DEBUG) && !defined(GLS_NO_BIND_CHECK)
+#	if defined(_DEBUG) && !defined(GLS_NO_BIND_CHECK)
     GLint ret;
     if(obj.get_bind_parameter_name() == 0)
         return;
     glGetIntegerv(obj.get_bind_parameter_name(), &ret);
     assert(obj.get() == ret);
-#			endif
+#	endif
 }
 
 }
@@ -480,7 +480,7 @@ class buffer {
 
     template<typename T>
     void set_data(const std::vector<T> &data) {
-        set_data(&data[0], data.size(), sizeof(T))
+		set_data(&data[0], data.size(), sizeof(T));
     }
 
     std::size_t num_elements() const {
@@ -579,8 +579,8 @@ class framebuffer {
 
         bind();
 
-        color_map_->attach_on(*this, GL_COLOR_ATTACHMENT0);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		color_map_->attach_on(*this, GL_COLOR_ATTACHMENT0);
         depth_map_->attach_on(*this, GL_DEPTH_ATTACHMENT);
 
         GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };

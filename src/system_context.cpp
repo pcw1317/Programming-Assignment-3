@@ -29,12 +29,13 @@ void system_context::load_mesh(const char *path) {
     for (const auto &shape : shapes) {
         host_mesh_t mesh = host_mesh_t(shape);
         //std::cout << mesh.getAABBmax().x << " " << mesh.getAABBmax().y << " " << mesh.getAABBmax().z << ", " << mesh.getAABBmin().x << " " << mesh.getAABBmin().y <<  " " << mesh.getAABBmin().z << std::endl;
-        drawMeshes.push_back(device_mesh_t::deviceMeshFromMesh(mesh));
+        drawMeshes.push_back(device_mesh_t(mesh));
         irKernel->addMesh(mesh);
         if (shape.material.name == "light") {
             // process light
-            light.lightMax = mesh.getAABBmax();
-            light.lightMin = mesh.getAABBmin();
+			auto aabb = mesh.get_aabb();
+			light.lightMin = aabb.first;
+            light.lightMax = aabb.second;
             light.direction = glm::normalize(glm::vec3(0, -1, 0));
             light.intensity = glm::vec3(1, 1, 1) * 1e5f;
         }

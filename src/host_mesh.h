@@ -1,5 +1,5 @@
-#ifndef _MESH_H_
-#define _MESH_H_
+#ifndef _HOST_MESH_H_
+#define _HOST_MESH_H_
 
 #include <vector>
 #include <algorithm>
@@ -17,73 +17,31 @@ class host_mesh_t {
     glm::vec3 diffuse_color;
 
   public:
-    host_mesh_t() {
-        AABBcalculated = false;
-        AABBmin = glm::vec3(1e300);
-        AABBmax = glm::vec3(-1e300);
-    }
+    host_mesh_t();
+    host_mesh_t( const host_mesh_t &mesh ) = default;
+    host_mesh_t( const std::vector<glm::vec3> &vertices,
+                 const std::vector<glm::vec3> &normals,
+                 const std::vector<glm::vec2> &texcoords,
+                 const std::vector<unsigned short> &indices,
+                 const std::string &texture_name,
+                 const glm::vec3 &ambient_color,
+                 const glm::vec3 &diffuse_color );
+    explicit host_mesh_t( const tinyobj::shape_t &shape );
+	host_mesh_t& operator=(const host_mesh_t&) = default;
+    ~host_mesh_t() = default;
+    host_mesh_t( host_mesh_t && ) = default;
+    host_mesh_t &operator=( host_mesh_t && ) = default;
 
-    host_mesh_t(host_mesh_t &mesh) {
-        this->vertices = std::vector<glm::vec3>(mesh.vertices);
-        this->normals = std::vector<glm::vec3>(mesh.normals);
-        this->texcoords = std::vector<glm::vec2>(mesh.texcoords);
-        this->indices = std::vector<unsigned short>(mesh.indices);
-        this->texture_name = std::string(mesh.texture_name);
-        this->diffuse_color = glm::vec3(mesh.diffuse_color);
-        this->AABBcalculated = mesh.AABBcalculated;
-        this->AABBmin = mesh.AABBmin;
-        this->AABBmax = mesh.AABBmax;
-    }
-
-    host_mesh_t(std::vector<glm::vec3> &vertices,
-                std::vector<glm::vec3> &normals,
-                std::vector<glm::vec2> &texcoords,
-                std::vector<unsigned short> &indices,
-                std::string &texture_name,
-                glm::vec3 &ambient_color,
-                glm::vec3 &diffuse_color) {
-        this->vertices = std::vector<glm::vec3>(vertices);
-        this->normals = std::vector<glm::vec3>(normals);
-        this->texcoords = std::vector<glm::vec2>(texcoords);
-        this->indices = std::vector<unsigned short>(indices);
-        this->texture_name = std::string(texture_name);
-        this->ambient_color = glm::vec3(ambient_color);
-        this->diffuse_color = glm::vec3(diffuse_color);
-        AABBcalculated = false;
-        AABBmin = glm::vec3(1e300);
-        AABBmax = glm::vec3(-1e300);
-    }
-
-    explicit host_mesh_t(const tinyobj::shape_t &shape);
-
-    glm::vec3 getAABBmin() {
-        calculateAABB();
-        return AABBmin;
-    }
-
-    glm::vec3 getAABBmax() {
-        calculateAABB();
-        return AABBmax;
+    const std::pair<glm::vec3, glm::vec3> &get_aabb() const {
+        update_aabb_();
+        return aabb_;
     }
 
   protected:
-    glm::vec3 AABBmin;
-    glm::vec3 AABBmax;
-    bool AABBcalculated;
+    mutable std::pair<glm::vec3, glm::vec3> aabb_;
+    mutable bool aabb_cached_;
 
-    void calculateAABB() {
-        if(!AABBcalculated) {
-            for(auto vertex : vertices) {
-                AABBmin.x = glm::min(AABBmin.x, vertex.x);
-                AABBmin.y = glm::min(AABBmin.y, vertex.y);
-                AABBmin.z = glm::min(AABBmin.z, vertex.z);
-                AABBmax.x = glm::max(AABBmax.x, vertex.x);
-                AABBmax.y = glm::max(AABBmax.y, vertex.y);
-                AABBmax.z = glm::max(AABBmax.z, vertex.z);
-            }
-            AABBcalculated = true;
-        }
-    }
+    void update_aabb_() const;
 };
 
 #endif
