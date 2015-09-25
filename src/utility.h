@@ -10,28 +10,7 @@
 namespace utility
 {
 
-typedef struct
-{
-    GLuint vertex;
-    GLuint fragment;
-} shaders_t;
-
-shaders_t loadShaders( const char *vert_path, const char *frag_path );
-GLuint loadComputeShader( const char *compute_path );
-
-void attachAndLinkProgram( GLuint program, shaders_t shaders );
-void attachAndLinkCSProgram( GLuint program, GLuint cshader );
-
 std::string read_file( const char *fname );
-
-// printShaderInfoLog
-// From OpenGL Shading Language 3rd Edition, p215-216
-// Display (hopefully) useful error messages if shader fails to compile
-void printShaderInfoLog( GLint shader );
-void printLinkInfoLog( GLint prog );
-void printFramebufferStatus( GLenum framebufferStatus );
-void printGLError( char *printString );
-
 std::string sprintfpp( const char *fmt_str, ... );
 
 namespace _scope_exit_detail
@@ -71,7 +50,6 @@ _scope_exit_detail::scope_guard<ExitFuncType> scope_exit( ExitFuncType f )
     return _scope_exit_detail::scope_guard<ExitFuncType> ( f );
 };
 #define SCOPE_EXIT(f) auto SCOPE_EXIT_STRJOIN(_scope_exit_, __LINE__) = utility::scope_exit(f)
-
 
 }
 

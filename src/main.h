@@ -68,49 +68,16 @@ enum gls_texture_t
     kGlsTextureMax
 };
 
-typedef struct
+enum display_type_t
 {
-    unsigned int vertex_array;
-    unsigned int vbo_indices;
-    unsigned int num_indices;
-    //Don't need these to get it working, but needed for deallocation
-    unsigned int vbo_data;
-} device_mesh2_t;
-
-typedef struct
-{
-    glm::vec3 pt;
-    glm::vec2 texcoord;
-} vertex2_t;
-
-namespace quad_attributes
-{
-
-enum
-{
-    POSITION,
-    TEXCOORD
-};
-
-}
-
-enum Display
-{
-    DISPLAY_DEPTH = 0,
-    DISPLAY_NORMAL = 1,
-    DISPLAY_POSITION = 2,
-    DISPLAY_COLOR = 3,
-    DISPLAY_TOTAL = 4,
-    DISPLAY_LIGHTS = 5,
-    DISPLAY_GLOWMASK = 6,
-    DISPLAY_SHADOW = 7,
-    DISPLAY_LPOS = 8
-};
-
-enum Render
-{
-    RENDER_CAMERA = 0,
-    RENDER_LIGHT = 1
+    kDisplayTypeDepth = 0,
+    kDisplayTypeNormal = 1,
+    kDisplayTypePosition = 2,
+    kDisplayTypeColor = 3,
+    kDisplayTypeTotal = 4,
+    kDisplayTypeLights = 5,
+    kDisplayTypeGlowMask = 6,
+    kDisplayTypeShadow = 7
 };
 
 #endif

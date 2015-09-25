@@ -97,7 +97,8 @@ file(GLOB_RECURSE SOURCE_LIST
 	"${PROJECT_SOURCE_DIR}/src/*.h"
 	"${PROJECT_SOURCE_DIR}/src/*.hpp"
 	"${PROJECT_SOURCE_DIR}/src/*.hh"
-	"${PROJECT_SOURCE_DIR}/src/*.hxx")
+	"${PROJECT_SOURCE_DIR}/src/*.hxx"
+	"${PROJECT_SOURCE_DIR}/src/*.inl")
 
 #Resources
 FILE(COPY "${PROJECT_SOURCE_DIR}/res" DESTINATION "${PROJECT_BINARY_DIR}/")

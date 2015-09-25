@@ -23,61 +23,13 @@
 int mouse_buttons = 0;
 int mouse_old_x = 0, mouse_dof_x = 0;
 int mouse_old_y = 0, mouse_dof_y = 0;
+display_type_t display_type = kDisplayTypeTotal;
 
 system_context *context;
-
-glm::mat4 get_mesh_world();
-
-device_mesh2_t device_quad;
-
-void init_quad()
-{
-    vertex2_t verts[] = { {glm::vec3( -1, 1, 0 ), glm::vec2( 0, 1 )},
-        {glm::vec3( -1, -1, 0 ), glm::vec2( 0, 0 )},
-        {glm::vec3( 1, -1, 0 ), glm::vec2( 1, 0 )},
-        {glm::vec3( 1, 1, 0 ), glm::vec2( 1, 1 )}
-    };
-
-    unsigned short indices[] = { 0, 1, 2, 0, 2, 3 };
-
-    //Allocate vertex array
-    //Vertex arrays encapsulate a set of generic vertex attributes and the buffers they are bound too
-    //Different vertex array per mesh.
-    context->gls_vertex_arrays[kGlsVertexArrayQuad] = gls::vertex_array();
-    context->gls_vertex_arrays[kGlsVertexArrayQuad].bind();
-
-    //Allocate vbos for data and indices
-    context->gls_buffers[kGlsBufferQuadVertexBuffer] = gls::buffer( GL_ARRAY_BUFFER, GL_STATIC_DRAW );
-    context->gls_buffers[kGlsBufferQuadIndexBuffer] = gls::buffer( GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW );
-
-    //Upload vertex data
-    context->gls_buffers[kGlsBufferQuadVertexBuffer].bind();
-    context->gls_buffers[kGlsBufferQuadVertexBuffer].set_data( verts, std::size( verts ), sizeof( vertex2_t ) );
-
-    //Use of strided data, Array of Structures instead of Structures of Arrays
-    context->gls_vertex_arrays[kGlsVertexArrayQuad].set_attribute( quad_attributes::POSITION, context->gls_buffers[kGlsBufferQuadVertexBuffer], 3, GL_FLOAT, false, sizeof( vertex2_t ), 0 );
-    context->gls_vertex_arrays[kGlsVertexArrayQuad].set_attribute( quad_attributes::TEXCOORD, context->gls_buffers[kGlsBufferQuadVertexBuffer], 2, GL_FLOAT, false, sizeof( vertex2_t ), sizeof( glm::vec3 ) );
-
-    //Upload index data
-    context->gls_buffers[kGlsBufferQuadIndexBuffer].bind();
-    context->gls_buffers[kGlsBufferQuadVertexBuffer].set_data( indices, std::size( indices ), sizeof( unsigned short ) );
-
-    //Unplug Vertex Array
-    context->gls_vertex_arrays[kGlsVertexArrayQuad].unbind();
-}
 
 glm::mat4 get_mesh_world()
 {
     return glm::mat4( 1.0 );
-}
-
-Display display_type = DISPLAY_TOTAL;
-void draw_quad()
-{
-    glBindVertexArray( device_quad.vertex_array );
-    context->gls_buffers[kGlsBufferQuadIndexBuffer].bind();
-    glDrawElements( GL_TRIANGLES, GLsizei( context->gls_buffers[kGlsBufferQuadIndexBuffer].num_elements() ), GL_UNSIGNED_SHORT, 0 );
-    glBindVertexArray( 0 );
 }
 
 void update_title()
@@ -93,28 +45,28 @@ void update_title()
         const char *displaying;
         switch( display_type )
         {
-        case( DISPLAY_DEPTH ) :
+        case( kDisplayTypeDepth ) :
             displaying = "Depth";
             break;
-        case( DISPLAY_NORMAL ) :
+        case( kDisplayTypeNormal ) :
             displaying = "Normal";
             break;
-        case( DISPLAY_COLOR ) :
+        case( kDisplayTypeColor ) :
             displaying = "Color";
             break;
-        case( DISPLAY_POSITION ) :
+        case( kDisplayTypePosition ) :
             displaying = "Position";
             break;
-        case( DISPLAY_TOTAL ) :
+        case( kDisplayTypeTotal ) :
             displaying = "Diffuse";
             break;
-        case( DISPLAY_LIGHTS ) :
+        case( kDisplayTypeLights ) :
             displaying = "Lights";
             break;
-        case DISPLAY_GLOWMASK:
+        case kDisplayTypeGlowMask:
             displaying = "Glow Mask";
             break;
-        case( DISPLAY_SHADOW ) :
+        case( kDisplayTypeShadow ) :
             displaying = "ShadowMap";
             break;
         }
@@ -288,32 +240,32 @@ void window_callback_key( GLFWwindow *window, int key, int scancode, int action,
         ty = -speed;
         break;
     case( '1' ):
-        display_type = DISPLAY_DEPTH;
+        display_type = kDisplayTypeDepth;
         break;
     case( '2' ):
-        display_type = DISPLAY_NORMAL;
+        display_type = kDisplayTypeNormal;
         break;
     case( '3' ):
-        display_type = DISPLAY_COLOR;
+        display_type = kDisplayTypeColor;
         break;
     case( '4' ):
-        display_type = DISPLAY_POSITION;
+        display_type = kDisplayTypePosition;
         break;
     case( '5' ):
-        display_type = DISPLAY_LIGHTS;
+        display_type = kDisplayTypeLights;
         break;
     case( '6' ):
-        display_type = DISPLAY_GLOWMASK;
+        display_type = kDisplayTypeGlowMask;
         break;
     case( '0' ):
-        display_type = DISPLAY_TOTAL;
+        display_type = kDisplayTypeTotal;
         break;
     case( '7' ):
-        display_type = DISPLAY_SHADOW;
+        display_type = kDisplayTypeShadow;
         break;
-    case( ' ' ):
+    /*case( ' ' ):
         context->shown_vpl_index = ( context->shown_vpl_index + 1 ) % context->VPLs.size();
-        break;
+        break;*/
     }
 
     if( abs( tx ) > 0 ||  abs( tz ) > 0 || abs( ty ) > 0 )

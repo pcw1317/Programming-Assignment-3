@@ -29,7 +29,7 @@ public:
 
 protected:
     system_context( const camera_t &pCam, const glm::uvec2 &viewport ) :
-        pCam( pCam ), viewport( viewport ), shown_vpl_index( 0 ), irKernel( new InstantRadiosityEmbree() )
+        pCam( pCam ), viewport( viewport ), irKernel( new InstantRadiosityEmbree() )
     {
     }
     std::unique_ptr<InstantRadiosityEmbree> irKernel;
@@ -47,9 +47,6 @@ public:
     std::vector<gls::buffer> gls_buffers;
     std::vector<gls::vertex_array> gls_vertex_arrays;
     std::vector<gls::framebuffer<gls::texture, gls::texture> > gls_framebuffers;
-
-    unsigned int shown_vpl_index;
-
 protected:
     static std::unique_ptr<system_context> global_context_;
 public:

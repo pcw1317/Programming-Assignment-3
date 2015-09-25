@@ -17,7 +17,7 @@ void system_context::load_mesh( const char *path )
 
         getline( liness, header, '=' );
         getline( liness, data, '=' );
-        if( strcmp( header.c_str(), "mesh" ) == 0 )
+        if( header == "mesh" )
         {
             std::size_t found = data.find_last_of( "/\\" );
             std::string path = data.substr( 0, found + 1 );
