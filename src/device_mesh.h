@@ -7,10 +7,13 @@
 
 class host_mesh_t;
 
-class device_mesh_t {
-  public:
-    struct vertex_attributes {
-        enum {
+class device_mesh_t
+{
+public:
+    struct vertex_attributes
+    {
+        enum
+        {
             position = 0,
             normal = 1,
             texcoord = 2
@@ -26,7 +29,7 @@ class device_mesh_t {
     glm::vec3 diffuse_color;
     std::string texture_name;
 
-  public:
+public:
     device_mesh_t( gls::buffer &&vbo_indices,
                    gls::buffer &&vbo_vertices,
                    gls::buffer &&vbo_normals,
@@ -42,7 +45,7 @@ class device_mesh_t {
     device_mesh_t( device_mesh_t && ) = default;
     device_mesh_t &operator=( device_mesh_t && ) = default;
 
-	void draw();
+    void draw();
 };
 
 #endif

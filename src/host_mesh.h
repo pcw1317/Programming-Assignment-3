@@ -6,8 +6,9 @@
 #include <glm/glm.hpp>
 #include <tiny_obj_loader/tiny_obj_loader.h>
 
-class host_mesh_t {
-  public:
+class host_mesh_t
+{
+public:
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> texcoords;
@@ -16,7 +17,7 @@ class host_mesh_t {
     glm::vec3 ambient_color;
     glm::vec3 diffuse_color;
 
-  public:
+public:
     host_mesh_t();
     host_mesh_t( const host_mesh_t &mesh ) = default;
     host_mesh_t( const std::vector<glm::vec3> &vertices,
@@ -27,17 +28,18 @@ class host_mesh_t {
                  const glm::vec3 &ambient_color,
                  const glm::vec3 &diffuse_color );
     explicit host_mesh_t( const tinyobj::shape_t &shape );
-	host_mesh_t& operator=(const host_mesh_t&) = default;
+    host_mesh_t &operator=( const host_mesh_t & ) = default;
     ~host_mesh_t() = default;
     host_mesh_t( host_mesh_t && ) = default;
     host_mesh_t &operator=( host_mesh_t && ) = default;
 
-    const std::pair<glm::vec3, glm::vec3> &get_aabb() const {
+    const std::pair<glm::vec3, glm::vec3> &get_aabb() const
+    {
         update_aabb_();
         return aabb_;
     }
 
-  protected:
+protected:
     mutable std::pair<glm::vec3, glm::vec3> aabb_;
     mutable bool aabb_cached_;
 

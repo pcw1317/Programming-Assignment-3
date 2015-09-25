@@ -1,10 +1,11 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-#include <GL/glew.h>
-#include <glm/glm.hpp>
 #include <vector>
 #include <cstring>
+
+#include <GL/glew.h>
+#include <glm/glm.hpp>
 #include <tiny_obj_loader/tiny_obj_loader.h>
 
 #include "gl_snippets.h"
@@ -32,37 +33,43 @@ constexpr float PI = 3.14159f;
 constexpr float kFarPlane = 2000.f;
 constexpr float kNearPlane = 0.1f;
 
-enum gls_program_t {
+enum gls_program_t
+{
     kGlsProgramSceneDraw,
     kGlsProgramQuadDraw,
     kGlsProgramMax
 };
 
-enum gls_buffer_t {
+enum gls_buffer_t
+{
     kGlsBufferQuadVertexBuffer,
     kGlsBufferQuadIndexBuffer,
     kGlsBufferMax
 };
 
-enum gls_vertex_array_t {
+enum gls_vertex_array_t
+{
     kGlsVertexArrayQuad,
     kGlsVertexArrayMax
 };
 
-enum gls_framebuffer_t {
-	kGlsFramebufferScreen,
+enum gls_framebuffer_t
+{
+    kGlsFramebufferScreen,
     kGlsFramebufferSceneDraw,
     kGlsFramebufferAccumulate,
     kGlsFramebufferMax
 };
 
-enum gls_texture_t {
+enum gls_texture_t
+{
     kGlsTextureScene,
     kGlsTextureAccumulate,
     kGlsTextureMax
 };
 
-typedef struct {
+typedef struct
+{
     unsigned int vertex_array;
     unsigned int vbo_indices;
     unsigned int num_indices;
@@ -70,21 +77,25 @@ typedef struct {
     unsigned int vbo_data;
 } device_mesh2_t;
 
-typedef struct {
+typedef struct
+{
     glm::vec3 pt;
     glm::vec2 texcoord;
 } vertex2_t;
 
-namespace quad_attributes {
+namespace quad_attributes
+{
 
-enum {
+enum
+{
     POSITION,
     TEXCOORD
 };
 
 }
 
-enum Display {
+enum Display
+{
     DISPLAY_DEPTH = 0,
     DISPLAY_NORMAL = 1,
     DISPLAY_POSITION = 2,
@@ -96,7 +107,8 @@ enum Display {
     DISPLAY_LPOS = 8
 };
 
-enum Render {
+enum Render
+{
     RENDER_CAMERA = 0,
     RENDER_LIGHT = 1
 };
