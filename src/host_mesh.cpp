@@ -33,7 +33,7 @@ host_mesh_t::host_mesh_t( const tinyobj::shape_t &shape )
     glm::vec3 diffuse_color;
 
     {
-        int totalsize = int(shape.mesh.indices.size() / 3);
+        int totalsize = int( shape.mesh.indices.size() / 3 );
         int f = 0;
         while( f < totalsize )
         {

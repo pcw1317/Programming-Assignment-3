@@ -13,8 +13,7 @@
 #include "gl_snippets.h"
 #include "camera.h"
 #include "raytracer.h"
-
-class device_mesh_t;
+#include "device_mesh.h"
 
 class system_context
 {
@@ -28,31 +27,31 @@ public:
     void load_mesh( const char *path );
 
 protected:
-    system_context( const camera_t &pCam, const glm::uvec2 &viewport ) :
-        pCam( pCam ), viewport( viewport ), irKernel( new raytracer() )
+    system_context( const camera_t &camera, const glm::uvec2 &viewport ) :
+        camera( camera ), viewport( viewport ), vpl_raytracer( new raytracer() )
     {
     }
-    std::unique_ptr<raytracer> irKernel;
+    std::unique_ptr<raytracer> vpl_raytracer;
     area_light_t light;
 
 public:
-    std::vector<device_mesh_t> drawMeshes;
-	std::unique_ptr<device_mesh_t> quad_mesh;
+    std::vector<device_mesh_t> scene_meshes;
+    device_mesh_t quad_mesh;
     GLFWwindow *window;
-    camera_t pCam;
+    camera_t camera;
     glm::uvec2 viewport;
-    std::vector<point_light_t> VPLs;
+    std::vector<point_light_t> vpls;
 
     //gls objects
     std::vector<gls::program> gls_programs;
     std::vector<gls::buffer> gls_buffers;
     std::vector<gls::vertex_array> gls_vertex_arrays;
     std::vector<gls::framebuffer<gls::texture, gls::texture> > gls_framebuffers;
-	std::vector<gls::cubemap_framebuffer<gls::texture, gls::texture> > gls_cubemap_framebuffers;
-	
-	void initialize_quad_mesh();
+    std::vector<gls::cubemap_framebuffer<gls::texture, gls::texture> > gls_cubemap_framebuffers;
 
-	unsigned int shown_vpl_index = 0;
+    void initialize_quad_mesh();
+
+    unsigned int shown_vpl_index = 0;
 
 protected:
     static std::unique_ptr<system_context> global_context_;

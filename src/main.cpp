@@ -21,8 +21,8 @@
 #include "raytracer.h"
 
 int mouse_buttons = 0;
-int mouse_old_x = 0, mouse_dof_x = 0;
-int mouse_old_y = 0, mouse_dof_y = 0;
+int mouse_old_x = 0;
+int mouse_old_y = 0;
 
 system_context *context;
 
@@ -53,142 +53,194 @@ void update_title()
     }
 }
 
-void perlight_draw(int light_index) {
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	context->gls_programs[kGlsProgramSceneDraw].bind();
-	context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(3 /*u_vplPosition*/, context->VPLs[light_index].position, context->VPLs[light_index].intensity, context->VPLs[light_index].direction);
+void perlight_draw( int light_index )
+{
+    glDisable( GL_BLEND );
+    glEnable( GL_DEPTH_TEST );
+    context->gls_programs[kGlsProgramSceneDraw].bind();
+    context->gls_programs[kGlsProgramSceneDraw].set_uniforms(
+        //"u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex"
+        gls::no_change,
+        gls::no_change,
+        gls::no_change,
+        context->vpls[light_index].position,
+        context->vpls[light_index].intensity,
+        context->vpls[light_index].direction,
+        gls::no_change,
+        gls::no_change,
+        gls::no_change,
+        gls::no_change );
+    context->gls_framebuffers[kGlsFramebufferSceneDraw].bind();
+    context->gls_framebuffers[kGlsFramebufferSceneDraw].set_viewport();
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-	context->gls_framebuffers[kGlsFramebufferSceneDraw].bind();
-	context->gls_framebuffers[kGlsFramebufferSceneDraw].set_viewport();
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glActiveTexture( GL_TEXTURE0 );
+    context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].get_color_map().bind();
 
-	glActiveTexture(GL_TEXTURE0);
-	context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].get_color_map().bind();
-
-	for (int i = 0; i < context->drawMeshes.size(); i++)
-	{
-		context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(7 /*u_AmbientColor*/, context->drawMeshes[i].ambient_color, context->drawMeshes[i].diffuse_color);
-		context->drawMeshes[i].draw();
-	}
+    for( int i = 0; i < context->scene_meshes.size(); i++ )
+    {
+        context->gls_programs[kGlsProgramSceneDraw].set_uniforms(
+            //"u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex"
+            gls::no_change,
+            gls::no_change,
+            gls::no_change,
+            gls::no_change,
+            gls::no_change,
+            gls::no_change,
+            gls::no_change,
+            context->scene_meshes[i].ambient_color,
+            context->scene_meshes[i].diffuse_color,
+            gls::no_change );
+        context->scene_meshes[i].draw();
+    }
 };
 
 //from https://github.com/cforfang/opengl-shadowmapping/blob/master/src/vsmcube/main.cpp
-std::pair<glm::mat4, glm::mat4> get_shadow_matrices(glm::vec3 light_pos, int dir){
-	glm::mat4 v, p;
-	p = glm::perspective(90.0f, 1.0f, 0.1f, 1000.0f);
-	switch (dir) {
-	case 0:
-		// +X
-		v = glm::lookAt(light_pos, light_pos + glm::vec3(+1, +0, 0), glm::vec3(0, -1, 0));
-		p *= v;
-		break;
-	case 1:
-		// -X
-		v = glm::lookAt(light_pos, light_pos + glm::vec3(-1, +0, 0), glm::vec3(0, -1, 0));
-		p *= v;
-		break;
-	case 2:
-		// +Y
-		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, +1, 0), glm::vec3(0, 0, -1));
-		p *= v;
-		break;
-	case 3:
-		// -Y
-		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, -1, 0), glm::vec3(0, 0, -1));
-		p *= v;
-		break;
-	case 4:
-		// +Z
-		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, 0, +1), glm::vec3(0, -1, 0));
-		p *= v;
-		break;
-	case 5:
-		// -Z
-		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, 0, -1), glm::vec3(0, -1, 0));
-		p *= v;
-		break;
-	default:
-		// Do nothing
-		break;
-	}
-	return std::make_pair(v, p);
+std::pair<glm::mat4, glm::mat4> get_shadow_matrices( glm::vec3 light_pos, int dir )
+{
+    glm::mat4 v, p;
+    p = glm::perspective( 90.0f, 1.0f, 0.1f, 1000.0f );
+    switch( dir )
+    {
+    case 0:
+        // +X
+        v = glm::lookAt( light_pos, light_pos + glm::vec3( +1, +0, 0 ), glm::vec3( 0, -1, 0 ) );
+        p *= v;
+        break;
+    case 1:
+        // -X
+        v = glm::lookAt( light_pos, light_pos + glm::vec3( -1, +0, 0 ), glm::vec3( 0, -1, 0 ) );
+        p *= v;
+        break;
+    case 2:
+        // +Y
+        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, +1, 0 ), glm::vec3( 0, 0, -1 ) );
+        p *= v;
+        break;
+    case 3:
+        // -Y
+        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, -1, 0 ), glm::vec3( 0, 0, -1 ) );
+        p *= v;
+        break;
+    case 4:
+        // +Z
+        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, 0, +1 ), glm::vec3( 0, -1, 0 ) );
+        p *= v;
+        break;
+    case 5:
+        // -Z
+        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, 0, -1 ), glm::vec3( 0, -1, 0 ) );
+        p *= v;
+        break;
+    default:
+        // Do nothing
+        break;
+    }
+    return std::make_pair( v, p );
 }
 
-void perlight_generate_shadow_map(int light_index) {
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	context->gls_programs[kGlsProgramShadowMapping].bind();
-	context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].set_viewport();
+void perlight_generate_shadow_map( int light_index )
+{
+    glDisable( GL_BLEND );
+    glEnable( GL_DEPTH_TEST );
+    context->gls_programs[kGlsProgramShadowMapping].bind();
+    context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].set_viewport();
 
-	for (int i = 0; i < 6; ++i) {
-		context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].bind(i);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		auto vp = get_shadow_matrices(context->VPLs[light_index].position, i);
-		context->gls_programs[kGlsProgramShadowMapping].set_uniforms_from(1 /*u_cameraToShadowView*/, vp.first, vp.second);
-		for (int i = 0; i < context->drawMeshes.size(); i++) {
-			context->drawMeshes[i].draw();
-		}
-	}
+    for( int i = 0; i < 6; ++i )
+    {
+        context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].bind( i );
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        auto vp = get_shadow_matrices( context->vpls[light_index].position, i );
+        context->gls_programs[kGlsProgramShadowMapping].set_uniforms(
+            //"u_model", "u_cameraToShadowView" , "u_cameraToShadowProjector"
+            gls::no_change,
+            vp.first,
+            vp.second );
+        for( int i = 0; i < context->scene_meshes.size(); i++ )
+        {
+            context->scene_meshes[i].draw();
+        }
+    }
 };
 
-void perlight_accumulate(int light_index) {
-	glEnable(GL_BLEND);
-	glDisable(GL_DEPTH_TEST);
-	glBlendFunc(GL_ONE, GL_ONE); //perform additive blending
+void perlight_accumulate( int light_index )
+{
+    glEnable( GL_BLEND );
+    glDisable( GL_DEPTH_TEST );
+    glBlendFunc( GL_ONE, GL_ONE ); //perform additive blending
 
-	context->gls_programs[kGlsProgramQuadDraw].bind();
-	context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
-	context->gls_framebuffers[kGlsFramebufferAccumulate].set_viewport();
-	glActiveTexture(GL_TEXTURE0);
-	context->gls_framebuffers[kGlsFramebufferSceneDraw].get_color_map().bind();
-	context->quad_mesh->draw();
+    context->gls_programs[kGlsProgramQuadDraw].bind();
+    context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
+    context->gls_framebuffers[kGlsFramebufferAccumulate].set_viewport();
+    glActiveTexture( GL_TEXTURE0 );
+    context->gls_framebuffers[kGlsFramebufferSceneDraw].get_color_map().bind();
+    context->quad_mesh.draw();
 };
 
-void visualize_accumulation() {
-	glDisable(GL_BLEND);
-	glDisable(GL_DEPTH_TEST);
+void visualize_accumulation()
+{
+    glDisable( GL_BLEND );
+    glDisable( GL_DEPTH_TEST );
 
-	context->gls_programs[kGlsProgramQuadDraw].bind();
-	context->gls_framebuffers[kGlsFramebufferScreen].bind();
-	context->gls_framebuffers[kGlsFramebufferScreen].set_viewport();
-	glActiveTexture(GL_TEXTURE0);
-	context->gls_framebuffers[kGlsFramebufferAccumulate].get_color_map().bind();
-	context->quad_mesh->draw();
+    context->gls_programs[kGlsProgramQuadDraw].bind();
+    context->gls_framebuffers[kGlsFramebufferScreen].bind();
+    context->gls_framebuffers[kGlsFramebufferScreen].set_viewport();
+    glActiveTexture( GL_TEXTURE0 );
+    context->gls_framebuffers[kGlsFramebufferAccumulate].get_color_map().bind();
+    context->quad_mesh.draw();
 };
 
-
-void render_forward()
+void render()
 {
     //clear accumulation framebuffer frst
     context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     glm::mat4 model = get_global_mesh_world(); //assume that model matrix is constant across models!
-    glm::mat4 view = context->pCam.get_view();
-    glm::mat4 perspective = context->pCam.get_perspective();
-	
-	
-	//set global parameters
-	context->gls_programs[kGlsProgramSceneDraw].bind();
-	context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from(0 /*u_ModelMat*/, model, view, perspective);
-	context->gls_programs[kGlsProgramSceneDraw].set_uniform<int>(6 /*u_numLights*/, kVplCount);//int(context->VPLs.size()));
-	context->gls_programs[kGlsProgramSceneDraw].set_uniform<int>(9 /*u_shadowTex*/, 0);
-	context->gls_programs[kGlsProgramQuadDraw].bind();
-	context->gls_programs[kGlsProgramQuadDraw].set_uniform<int>(0 /*u_Tex*/, 0);
-	context->gls_programs[kGlsProgramShadowMapping].bind();
-	context->gls_programs[kGlsProgramShadowMapping].set_uniform<glm::mat4>(0 /*u_model*/, model);
+    glm::mat4 view = context->camera.get_view();
+    glm::mat4 perspective = context->camera.get_perspective();
 
+    //set global parameters
+    context->gls_programs[kGlsProgramSceneDraw].bind();
+    context->gls_programs[kGlsProgramSceneDraw].set_uniforms(
+        //"u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex"
+        model,
+        view,
+        perspective,
+        gls::no_change,
+        gls::no_change,
+        gls::no_change,
+        context->shown_vpl_index == context->vpls.size() ? int( context->vpls.size() ) : 1,
+        gls::no_change,
+        gls::no_change,
+        0 );
+    context->gls_programs[kGlsProgramQuadDraw].bind();
+    context->gls_programs[kGlsProgramQuadDraw].set_uniforms(
+        //"u_Tex"
+        0 );
+    context->gls_programs[kGlsProgramShadowMapping].bind();
+    context->gls_programs[kGlsProgramShadowMapping].set_uniforms(
+        //"u_model", "u_cameraToShadowView" , "u_cameraToShadowProjector"
+        model,
+        gls::no_change,
+        gls::no_change );
 
-    for( int light_index = 0; light_index < context->VPLs.size(); ++light_index )
-	//for (int light_index = context->shown_vpl_index; light_index < context->shown_vpl_index + 1; ++light_index)
+    if( context->shown_vpl_index == context->vpls.size() )
     {
-		perlight_generate_shadow_map(light_index);
-		perlight_draw(light_index);
-		perlight_accumulate(light_index);
+        for( int light_index = 0; light_index < context->vpls.size(); ++light_index )
+        {
+            perlight_generate_shadow_map( light_index );
+            perlight_draw( light_index );
+            perlight_accumulate( light_index );
+        }
     }
-	
-	visualize_accumulation();
+    else
+    {
+        perlight_generate_shadow_map( context->shown_vpl_index );
+        perlight_draw( context->shown_vpl_index );
+        perlight_accumulate( context->shown_vpl_index );
+    }
+    visualize_accumulation();
 }
 
 void window_callback_mouse_button( GLFWwindow *window, int button, int action, int mods )
@@ -208,11 +260,6 @@ void window_callback_mouse_button( GLFWwindow *window, int button, int action, i
         mouse_old_x = int( x );
         mouse_old_y = int( y );
     }
-    if( button == GLFW_MOUSE_BUTTON_RIGHT )
-    {
-        mouse_dof_x = mouse_old_x;
-        mouse_dof_y = mouse_old_y;
-    }
 }
 
 void window_callback_cursor_pos( GLFWwindow *window, double x, double y )
@@ -222,13 +269,9 @@ void window_callback_cursor_pos( GLFWwindow *window, double x, double y )
     dy = ( float )( y - mouse_old_y );
     float sensitivity = 0.001f;
 
-    if( mouse_buttons & 1 << GLFW_MOUSE_BUTTON_RIGHT )
+    if( mouse_buttons & 1 << GLFW_MOUSE_BUTTON_LEFT )
     {
-        //context->pCam.adjust(0,0,dx,0,0,0);;
-    }
-    else if( mouse_buttons & 1 << GLFW_MOUSE_BUTTON_LEFT )
-    {
-        context->pCam.rotate( glm::vec3( dy * sensitivity, 0, dx * sensitivity ) );
+        context->camera.rotate( glm::vec3( dy * sensitivity, 0, dx * sensitivity ) );
     }
 
     mouse_old_x = int( x );
@@ -267,42 +310,76 @@ void window_callback_key( GLFWwindow *window, int key, int scancode, int action,
         ty = -speed;
         break;
     case( ' ' ):
-        context->shown_vpl_index = ( context->shown_vpl_index + 1 ) % context->VPLs.size();
+        context->shown_vpl_index = ( context->shown_vpl_index + 1 ) % ( context->vpls.size() + 1 );
         break;
     }
 
     if( abs( tx ) > 0 ||  abs( tz ) > 0 || abs( ty ) > 0 )
     {
-        context->pCam.translate( glm::vec3( tx, ty, tz ) );
+        context->camera.translate( glm::vec3( tx, ty, tz ) );
     }
+}
+
+device_mesh_t init_quad_mesh()
+{
+    std::vector<glm::vec3> positions
+    {
+        glm::vec3( -1, 1, 0 ),
+        glm::vec3( -1, -1, 0 ),
+        glm::vec3( 1, -1, 0 ),
+        glm::vec3( 1, 1, 0 )
+    };
+
+    std::vector<glm::vec3> normals
+    {
+        glm::vec3( 0, 0, 0 ),
+        glm::vec3( 0, 0, 0 ),
+        glm::vec3( 0, 0, 0 ),
+        glm::vec3( 0, 0, 0 )
+    };
+
+    std::vector<glm::vec2> texcoords
+    {
+        glm::vec2( 0, 1 ),
+        glm::vec2( 0, 0 ),
+        glm::vec2( 1, 0 ),
+        glm::vec2( 1, 1 )
+    };
+
+    std::vector<unsigned short> indices{ 0, 1, 2, 0, 2, 3 };
+
+    host_mesh_t hm( positions, normals, texcoords, indices, "", glm::vec3( 0, 0, 0 ), glm::vec3( 0, 0, 0 ) );
+    return device_mesh_t( hm );
 }
 
 void init()
 {
     //GL parameter initialization
-	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+    glEnable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
     glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-
 
     //context gls object initialization
     context->gls_programs.resize( kGlsProgramMax );
     context->gls_buffers.resize( kGlsBufferMax );
     context->gls_vertex_arrays.resize( kGlsVertexArrayMax );
     context->gls_framebuffers.resize( kGlsFramebufferMax );
-	context->gls_cubemap_framebuffers.resize(kGlsCubemapFramebufferMax);
+    context->gls_cubemap_framebuffers.resize( kGlsCubemapFramebufferMax );
 
     //shaders
     context->gls_programs[kGlsProgramSceneDraw] = gls::program( kProgramSceneDraw );
     context->gls_programs[kGlsProgramQuadDraw] = gls::program( kProgramQuadDraw );
-	context->gls_programs[kGlsProgramShadowMapping] = gls::program(kProgramShadowMapping);
+    context->gls_programs[kGlsProgramShadowMapping] = gls::program( kProgramShadowMapping );
 
     //framebuffers
-    context->gls_framebuffers[kGlsFramebufferScreen] = gls::framebuffer<gls::texture, gls::texture>(context->viewport.x, context->viewport.y, true); //default screen framebuffer
+    context->gls_framebuffers[kGlsFramebufferScreen] = gls::framebuffer<gls::texture, gls::texture>( context->viewport.x, context->viewport.y, true ); //default screen framebuffer
     context->gls_framebuffers[kGlsFramebufferSceneDraw] = gls::framebuffer<gls::texture, gls::texture>( context->viewport.x, context->viewport.y );
     context->gls_framebuffers[kGlsFramebufferAccumulate] = gls::framebuffer<gls::texture, gls::texture>( context->viewport.x, context->viewport.y );
-	
-	//cubemap framebuffers
-	context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow] = gls::cubemap_framebuffer<gls::texture, gls::texture>(kShadowSize); //default screen framebuffer
+
+    //cubemap framebuffers
+    context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow] = gls::cubemap_framebuffer<gls::texture, gls::texture>( kShadowSize ); //default screen framebuffer
+
+    //quad geometry; used for various texture-to-texture operations
+    context->quad_mesh = std::move( init_quad_mesh() );
 }
 
 namespace
@@ -417,21 +494,20 @@ int main( int argc, char *argv[] )
     }
 
     //Step 3: Initialize objects
-	try
-	{
-		init();
-		context->initialize_quad_mesh();
-	}
-	catch (const std::exception &e)
-	{
-		std::cerr << "Object initialization failed. Reason: " << e.what() << "\nAborting.\n";
-		return EXIT_FAILURE;
-	}
+    try
+    {
+        init();
+    }
+    catch( const std::exception &e )
+    {
+        std::cerr << "Object initialization failed. Reason: " << e.what() << "\nAborting.\n";
+        return EXIT_FAILURE;
+    }
 
     //Step 4: Main loop
     while( !glfwWindowShouldClose( context->window ) )
     {
-        render_forward();
+        render();
         update_title();
 
         glfwSwapBuffers( context->window );

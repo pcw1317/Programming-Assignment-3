@@ -30,6 +30,7 @@ public:
     std::string texture_name;
 
 public:
+    device_mesh_t() : vertex_array( nullptr ) {}
     device_mesh_t( gls::buffer &&vbo_indices,
                    gls::buffer &&vbo_vertices,
                    gls::buffer &&vbo_normals,

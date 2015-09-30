@@ -71,13 +71,6 @@ file(COPY ${CONTRIB_LIST} DESTINATION "${PROJECT_BINARY_DIR}/")
 
 INCLUDE_DIRECTORIES("${CONTRIB_DIR}/include")
 
-configure_file(
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/global_config.h.in"
-	"${CMAKE_CURRENT_BINARY_DIR}/global_config.h"
-	)
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
 #from http://cmake.org/pipermail/cmake/2013-November/056332.html
 macro(GroupSources curdir)
    file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)

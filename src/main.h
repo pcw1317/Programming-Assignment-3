@@ -9,7 +9,6 @@
 #include <tiny_obj_loader/tiny_obj_loader.h>
 
 #include "gl_snippets.h"
-#include "global_config.h"
 
 //GL shader/program definitions
 GLS_PROGRAM_DEFINE(
@@ -18,7 +17,7 @@ GLS_PROGRAM_DEFINE(
     "res/shaders/screen_draw.fragment.glsl",
 { "Position", "Normal" },
 { "outColor" },
-{ "u_ModelMat", "u_ViewMat" , "u_PerspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_AmbientColor", "u_DiffuseColor", "u_shadowTex" }
+{ "u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex" }
 );
 
 GLS_PROGRAM_DEFINE(
@@ -31,23 +30,25 @@ GLS_PROGRAM_DEFINE(
 );
 
 GLS_PROGRAM_DEFINE(
-	kProgramShadowMapping,
-	"res/shaders/shadow.vertex.glsl",
-	"res/shaders/shadow.fragment.glsl",
-	{ "Position" },
-	{ "outColor" },
-	{ "u_model", "u_cameraToShadowView" , "u_cameraToShadowProjector" }
+    kProgramShadowMapping,
+    "res/shaders/shadow.vertex.glsl",
+    "res/shaders/shadow.fragment.glsl",
+{ "Position" },
+{ "outColor" },
+{ "u_model", "u_cameraToShadowView" , "u_cameraToShadowProjector" }
 );
 
 constexpr float PI = 3.14159f;
 constexpr float kFarPlane = 2000.f;
 constexpr float kNearPlane = 0.1f;
+constexpr int kShadowSize = 256;
+constexpr int kVplCount = 128;
 
 enum gls_program_t
 {
     kGlsProgramSceneDraw,
     kGlsProgramQuadDraw,
-	kGlsProgramShadowMapping,
+    kGlsProgramShadowMapping,
     kGlsProgramMax
 };
 
@@ -74,8 +75,8 @@ enum gls_framebuffer_t
 
 enum gls_cubemap_framebuffer_t
 {
-	kGlsCubemapFramebufferShadow,
-	kGlsCubemapFramebufferMax
+    kGlsCubemapFramebufferShadow,
+    kGlsCubemapFramebufferMax
 };
 
 enum gls_texture_t
@@ -84,8 +85,5 @@ enum gls_texture_t
     kGlsTextureAccumulate,
     kGlsTextureMax
 };
-
-constexpr int kShadowSize = 256;
-constexpr int kVplCount = 64;
 
 #endif

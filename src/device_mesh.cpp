@@ -65,5 +65,5 @@ void device_mesh_t::draw()
 {
     vertex_array.bind();
     vbo_indices.bind();
-    glDrawElements( GL_TRIANGLES, GLsizei(vbo_indices.num_elements()), GL_UNSIGNED_SHORT, 0 );
+    glDrawElements( GL_TRIANGLES, GLsizei( vbo_indices.num_elements() ), GL_UNSIGNED_SHORT, 0 );
 }

@@ -29,9 +29,7 @@ class raytracer
     std::uniform_real_distribution<float> uniform_real_distribution_jitter_;
     std::uniform_real_distribution<float> uniform_real_distribution_01_;
 
-    std::vector<unsigned int> geomIDs;
-    std::map<unsigned int, host_mesh_t> geomIDToMesh;
-
+    std::map<unsigned int, host_mesh_t> geom_id_to_mesh_;
 public:
     static constexpr int kRecursionDepthHardLimit = 20; //to prevent stack overflow in recursive VPL algorithm
 
@@ -44,8 +42,6 @@ public:
 
     void add_mesh( host_mesh_t mesh );
     void commit_scene();
-    std::vector<point_light_t> compute_vpl( point_light_t light, unsigned int recursion_depth_left = kRecursionDepthHardLimit );
+    std::vector<point_light_t> compute_vpl( point_light_t &light, unsigned int recursion_depth_left = kRecursionDepthHardLimit );
     std::vector<point_light_t> compute_vpl( area_light_t light, unsigned int light_sample_count );
 };
-
-glm::vec3 randDirHemisphere( glm::vec3 normal, float v1, float v2 );

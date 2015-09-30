@@ -1,8 +1,8 @@
+#include "camera.h"
+
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/transform2.hpp>
 #include <glm/gtx/euler_angles.hpp>
-
-#include "camera.h"
 
 // yaw-pitch-roll
 void camera_t::rotate( glm::vec3 eulerAngleDelta )

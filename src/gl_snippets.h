@@ -461,6 +461,14 @@ template<> inline void program::set_uniform<glm::mat4x3>( GLuint index, const gl
     glUniformMatrix4x3fv( uniform_locations_[index], 1, GL_FALSE, glm::value_ptr( value ) );
 }
 
+namespace _gls_detail
+{
+struct no_change_t {};
+}
+constexpr _gls_detail::no_change_t no_change{};
+
+template<> inline void program::set_uniform<_gls_detail::no_change_t>( GLuint index, const _gls_detail::no_change_t &value ) {}
+
 class buffer
 {
 public:
@@ -606,6 +614,7 @@ public:
     {
         glGenVertexArrays( 1, &va_ );
     }
+    vertex_array( nullptr_t ): va_( 0 ) {}
     vertex_array( const vertex_array & ) = delete;
     vertex_array &operator=( const vertex_array & ) = delete;
     virtual ~vertex_array()
@@ -667,11 +676,11 @@ public:
         glBindFramebuffer( GL_FRAMEBUFFER, 0 );
     }
 public:
-	framebuffer() : framebuffer_(0), width_(0), height_(0) {}
-    framebuffer(int width, int height, bool screen = false): framebuffer_( 0 ), width_(width), height_(height)
+    framebuffer() : framebuffer_( 0 ), width_( 0 ), height_( 0 ) {}
+    framebuffer( int width, int height, bool screen = false ): framebuffer_( 0 ), width_( width ), height_( height )
     {
-		if (screen)
-			return;
+        if( screen )
+            return;
         glGenFramebuffers( 1, &framebuffer_ );
 
         color_map_ = std::move( ColorMapType::generate_rgb_buffer( width, height ) );
@@ -689,9 +698,10 @@ public:
         assert( glCheckFramebufferStatus( GL_FRAMEBUFFER ) == GL_FRAMEBUFFER_COMPLETE );
     }
 
-	void set_viewport() {
-		glViewport(0, 0, width_, height_);
-	}
+    void set_viewport()
+    {
+        glViewport( 0, 0, width_, height_ );
+    }
 
     framebuffer( const framebuffer & ) = delete;
     framebuffer &operator=( const framebuffer & ) = delete;
@@ -713,8 +723,8 @@ public:
         rhs.framebuffer_ = 0;
         color_map_ = std::move( rhs.color_map_ );
         depth_map_ = std::move( rhs.depth_map_ );
-		width_ = rhs.width_;
-		height_ = rhs.height_;
+        width_ = rhs.width_;
+        height_ = rhs.height_;
         return *this;
     }
     ColorMapType &get_color_map()
@@ -729,7 +739,7 @@ private:
     GLuint framebuffer_;
     std::unique_ptr<ColorMapType> color_map_;
     std::unique_ptr<DepthMapType> depth_map_;
-	int width_, height_;
+    int width_, height_;
 };
 
 
@@ -755,25 +765,26 @@ public:
         glBindFramebuffer( GL_FRAMEBUFFER, 0 );
     }
 public:
-    cubemap_framebuffer() {
-		framebuffer_[0] = 0;
-	}
-    cubemap_framebuffer( int size ):size_(size)
+    cubemap_framebuffer()
+    {
+        framebuffer_[0] = 0;
+    }
+    cubemap_framebuffer( int size ): size_( size )
     {
         glGenFramebuffers( 6, framebuffer_ );
 
         color_map_ = std::move( ColorMapType::generate_cube_rgb_buffer( size ) );
         depth_map_ = std::move( DepthMapType::generate_cube_depth_buffer( size ) );
 
-		color_map_->attach_on(*this, GL_COLOR_ATTACHMENT0);
-		depth_map_->attach_on(*this, GL_DEPTH_ATTACHMENT);
+        color_map_->attach_on( *this, GL_COLOR_ATTACHMENT0 );
+        depth_map_->attach_on( *this, GL_DEPTH_ATTACHMENT );
 
         for( int i = 0; i < 6; ++i )
         {
-            bind(i);
+            bind( i );
 
             glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
-            
+
             GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
             glDrawBuffers( 1, draw_buffers );
 
@@ -792,24 +803,26 @@ public:
     {
         *this = std::move( rhs );
     }
-    cubemap_framebuffer &operator=(cubemap_framebuffer &&rhs )
+    cubemap_framebuffer &operator=( cubemap_framebuffer &&rhs )
     {
         if( framebuffer_[0] )
             glDeleteFramebuffers( 6, framebuffer_ );
 
-		for (int i = 0; i < 6; ++i) {
-			framebuffer_[i] = rhs.framebuffer_[i];
-			rhs.framebuffer_[i] = 0;
-		}
+        for( int i = 0; i < 6; ++i )
+        {
+            framebuffer_[i] = rhs.framebuffer_[i];
+            rhs.framebuffer_[i] = 0;
+        }
         color_map_ = std::move( rhs.color_map_ );
         depth_map_ = std::move( rhs.depth_map_ );
-		size_ = rhs.size_;
+        size_ = rhs.size_;
         return *this;
     }
-	
-	void set_viewport() {
-		glViewport(0, 0, size_, size_);
-	}
+
+    void set_viewport()
+    {
+        glViewport( 0, 0, size_, size_ );
+    }
     ColorMapType &get_color_map()
     {
         return *color_map_.get();
@@ -822,7 +835,7 @@ private:
     GLuint framebuffer_[6];
     std::unique_ptr<ColorMapType> color_map_;
     std::unique_ptr<DepthMapType> depth_map_;
-	int size_;
+    int size_;
 };
 
 class texture
@@ -888,14 +901,15 @@ public:
         glFramebufferTexture( GL_FRAMEBUFFER, attachment_target, texture_, mipmap_level );
     }
 
-	template<typename ColorMapType, typename DepthMapType>
-	void attach_on(cubemap_framebuffer<ColorMapType, DepthMapType> &fb, GLenum attachment_target, GLint mipmap_level = 0)
-	{
-		for (int i = 0; i < 6; ++i) {
-			fb.bind(i);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_target, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texture_, mipmap_level);
-		}
-	}
+    template<typename ColorMapType, typename DepthMapType>
+    void attach_on( cubemap_framebuffer<ColorMapType, DepthMapType> &fb, GLenum attachment_target, GLint mipmap_level = 0 )
+    {
+        for( int i = 0; i < 6; ++i )
+        {
+            fb.bind( i );
+            glFramebufferTexture2D( GL_FRAMEBUFFER, attachment_target, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texture_, mipmap_level );
+        }
+    }
 
     inline static std::unique_ptr<texture> generate_rgb_buffer( int width, int height );
     inline static std::unique_ptr<texture> generate_depth_buffer( int width, int height );
@@ -949,8 +963,8 @@ inline std::unique_ptr<texture> texture::generate_cube_rgb_buffer( int size )
     glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
     glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
     glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
-	
-	return tex;
+
+    return tex;
 }
 
 inline std::unique_ptr<texture> texture::generate_cube_depth_buffer( int size )
@@ -970,7 +984,7 @@ inline std::unique_ptr<texture> texture::generate_cube_depth_buffer( int size )
     glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
     glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
 
-	return tex;
+    return tex;
 }
 
 #define GLS_CHECK_ERROR()\
