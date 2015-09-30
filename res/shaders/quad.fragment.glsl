@@ -9,6 +9,5 @@ out vec4 outColor;
 void main() 
 {
     outColor = texture2D(u_Tex, fs_Texcoord);
-    //outColor = vec4(1.0, 0.5, 0.5, 1.0);
 }
 

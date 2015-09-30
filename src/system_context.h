@@ -48,6 +48,7 @@ public:
     std::vector<gls::buffer> gls_buffers;
     std::vector<gls::vertex_array> gls_vertex_arrays;
     std::vector<gls::framebuffer<gls::texture, gls::texture> > gls_framebuffers;
+	std::vector<gls::cubemap_framebuffer<gls::texture, gls::texture> > gls_cubemap_framebuffers;
 	
 	void initialize_quad_mesh();
 

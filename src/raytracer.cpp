@@ -44,7 +44,7 @@ namespace {
 
 constexpr float PI = 3.14159265358979f;
 constexpr float kJitterEpsilon = 0.2f;
-constexpr float kRayTraceEpsilon = 0.001f;
+constexpr float kRayTraceEpsilon = 0.01f;
 
 struct Vertex
 {
@@ -109,7 +109,7 @@ std::vector<point_light_t> raytracer::compute_vpl( point_light_t light, unsigned
 		return res;
 
     // should be a proper stratified quasirandom sampling direction
-    glm::vec3 randomDir = random::stratified_sampling( light.direction, recursion_depth_left, kRecursionDepthHardLimit, [&]() {return uniform_real_distribution_jitter_(random_engine_); });
+    glm::vec3 randomDir = random::stratified_sampling( light.direction, [&]() {return uniform_real_distribution_01_(random_engine_); });
 
     // Ray init.
     RTCRay ray;
@@ -130,6 +130,7 @@ std::vector<point_light_t> raytracer::compute_vpl( point_light_t light, unsigned
 		return res;
 	// skip if russian roulette failed
 	float rr_probability = (geomIDToMesh[ray.geomID].diffuse_color.x + geomIDToMesh[ray.geomID].diffuse_color.y + geomIDToMesh[ray.geomID].diffuse_color.z) / 3;
+	//float rr_probability = glm::length(light.intensity) / 15.f;
 	if (rr_probability <= uniform_real_distribution_01_(random_engine_))
 		return res;
 	
@@ -142,8 +143,8 @@ std::vector<point_light_t> raytracer::compute_vpl( point_light_t light, unsigned
 	VPL.position = rayOrg + rayDir * ray.tfar;
 	VPL.intensity = light.intensity	// light color
 		* geomIDToMesh[ray.geomID].diffuse_color	// diffuse only
-		* glm::abs(glm::dot(rayNg, rayDir)) // Lambertian cosine term
-		/ rr_probability;	// russian roulette weight
+		* glm::abs(glm::dot(rayNg, rayDir))
+		/ PI / rr_probability;	// russian roulette weight
 	VPL.direction = rayNg;
 
 	// recurse to make a global illumination
@@ -163,8 +164,14 @@ std::vector<point_light_t> raytracer::compute_vpl( area_light_t light, unsigned 
         point_light_t lightSample;
         lightSample.position = lightPos;
         lightSample.direction = light.direction;
-        lightSample.intensity = light.intensity / float(light_sample_count);
-        std::vector<point_light_t> vpls = compute_vpl( lightSample );
+		
+		glm::vec2 area = (light.aabb_max - light.aabb_min).xz();
+		lightSample.intensity =
+			light.intensity					// L(x)
+			* (area.x * area.y)				// 1/pdf of light sampling
+			/ float(light_sample_count);	// Monte Carlo integration divisor
+        
+		std::vector<point_light_t> vpls = compute_vpl( lightSample );
         res.insert( res.end(), vpls.begin(), vpls.end() );
     }
 

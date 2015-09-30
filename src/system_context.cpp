@@ -5,6 +5,7 @@
 #include <vector>
 #include "host_mesh.h"
 #include "device_mesh.h"
+#include "main.h"
 
 std::unique_ptr<system_context> system_context::global_context_ = nullptr;
 
@@ -61,21 +62,21 @@ void system_context::load_mesh( const char *path )
     for( const auto &shape : shapes )
     {
         host_mesh_t mesh = host_mesh_t( shape );
-        //std::cout << mesh.getAABBmax().x << " " << mesh.getAABBmax().y << " " << mesh.getAABBmax().z << ", " << mesh.getAABBmin().x << " " << mesh.getAABBmin().y <<  " " << mesh.getAABBmin().z << std::endl;
+        //std::cout << mesh.get_aabb().first.x << " " << mesh.get_aabb().first.y << " " << mesh.get_aabb().first.z << ", " << mesh.get_aabb().second.x << " " << mesh.get_aabb().second.y <<  " " << mesh.get_aabb().second.z << std::endl;
         drawMeshes.push_back( device_mesh_t( mesh ) );
         irKernel->add_mesh( mesh );
         if( shape.material.name == "light" )
         {
-            // process light
+            // process light; use ambient color as intensity
             auto aabb = mesh.get_aabb();
             light.aabb_min = aabb.first;
             light.aabb_max = aabb.second;
             light.direction = glm::normalize( glm::vec3( 0, -1, 0 ) );
-            light.intensity = glm::vec3( 1, 1, 1 ) * 1e6f;
+			light.intensity = glm::make_vec3(shape.material.ambient);
         }
     }
     irKernel->commit_scene();
-    auto vpls = irKernel->compute_vpl( light, 10);
+     auto vpls = irKernel->compute_vpl( light, kVplCount);
     VPLs.insert( VPLs.end(), vpls.begin(), vpls.end() );
 }
 

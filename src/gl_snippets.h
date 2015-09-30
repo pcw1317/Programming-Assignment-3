@@ -667,9 +667,11 @@ public:
         glBindFramebuffer( GL_FRAMEBUFFER, 0 );
     }
 public:
-    framebuffer(): framebuffer_( 0 ) {}
-    framebuffer( int width, int height )
+	framebuffer() : framebuffer_(0), width_(0), height_(0) {}
+    framebuffer(int width, int height, bool screen = false): framebuffer_( 0 ), width_(width), height_(height)
     {
+		if (screen)
+			return;
         glGenFramebuffers( 1, &framebuffer_ );
 
         color_map_ = std::move( ColorMapType::generate_rgb_buffer( width, height ) );
@@ -685,9 +687,12 @@ public:
         glDrawBuffers( 1, draw_buffers );
 
         assert( glCheckFramebufferStatus( GL_FRAMEBUFFER ) == GL_FRAMEBUFFER_COMPLETE );
-
-        glViewport( 0, 0, width, height );
     }
+
+	void set_viewport() {
+		glViewport(0, 0, width_, height_);
+	}
+
     framebuffer( const framebuffer & ) = delete;
     framebuffer &operator=( const framebuffer & ) = delete;
     virtual ~framebuffer()
@@ -708,18 +713,116 @@ public:
         rhs.framebuffer_ = 0;
         color_map_ = std::move( rhs.color_map_ );
         depth_map_ = std::move( rhs.depth_map_ );
+		width_ = rhs.width_;
+		height_ = rhs.height_;
         return *this;
     }
-	ColorMapType &get_color_map() {
-		return *color_map_.get();
-	}
-	DepthMapType &get_depth_map() {
-		return *depth_map_.get();
-	}
+    ColorMapType &get_color_map()
+    {
+        return *color_map_.get();
+    }
+    DepthMapType &get_depth_map()
+    {
+        return *depth_map_.get();
+    }
 private:
     GLuint framebuffer_;
     std::unique_ptr<ColorMapType> color_map_;
     std::unique_ptr<DepthMapType> depth_map_;
+	int width_, height_;
+};
+
+
+template<typename ColorMapType, typename DepthMapType>
+class cubemap_framebuffer
+{
+public:
+    //common interfaces
+    GLenum get_bind_parameter_name() const
+    {
+        return GL_FRAMEBUFFER_BINDING;
+    }
+    GLuint get( int i ) const
+    {
+        return framebuffer_;
+    }
+    void bind( int i )
+    {
+        glBindFramebuffer( GL_FRAMEBUFFER, framebuffer_[i] );
+    }
+    void unbind()
+    {
+        glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+    }
+public:
+    cubemap_framebuffer() {
+		framebuffer_[0] = 0;
+	}
+    cubemap_framebuffer( int size ):size_(size)
+    {
+        glGenFramebuffers( 6, framebuffer_ );
+
+        color_map_ = std::move( ColorMapType::generate_cube_rgb_buffer( size ) );
+        depth_map_ = std::move( DepthMapType::generate_cube_depth_buffer( size ) );
+
+		color_map_->attach_on(*this, GL_COLOR_ATTACHMENT0);
+		depth_map_->attach_on(*this, GL_DEPTH_ATTACHMENT);
+
+        for( int i = 0; i < 6; ++i )
+        {
+            bind(i);
+
+            glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
+            
+            GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
+            glDrawBuffers( 1, draw_buffers );
+
+            assert( glCheckFramebufferStatus( GL_FRAMEBUFFER ) == GL_FRAMEBUFFER_COMPLETE );
+        }
+    }
+
+    cubemap_framebuffer( const cubemap_framebuffer & ) = delete;
+    cubemap_framebuffer &operator=( const cubemap_framebuffer & ) = delete;
+    virtual ~cubemap_framebuffer()
+    {
+        if( framebuffer_[0] )
+            glDeleteFramebuffers( 6, framebuffer_ );
+    }
+    cubemap_framebuffer( cubemap_framebuffer &&rhs )
+    {
+        *this = std::move( rhs );
+    }
+    cubemap_framebuffer &operator=(cubemap_framebuffer &&rhs )
+    {
+        if( framebuffer_[0] )
+            glDeleteFramebuffers( 6, framebuffer_ );
+
+		for (int i = 0; i < 6; ++i) {
+			framebuffer_[i] = rhs.framebuffer_[i];
+			rhs.framebuffer_[i] = 0;
+		}
+        color_map_ = std::move( rhs.color_map_ );
+        depth_map_ = std::move( rhs.depth_map_ );
+		size_ = rhs.size_;
+        return *this;
+    }
+	
+	void set_viewport() {
+		glViewport(0, 0, size_, size_);
+	}
+    ColorMapType &get_color_map()
+    {
+        return *color_map_.get();
+    }
+    DepthMapType &get_depth_map()
+    {
+        return *depth_map_.get();
+    }
+private:
+    GLuint framebuffer_[6];
+    std::unique_ptr<ColorMapType> color_map_;
+    std::unique_ptr<DepthMapType> depth_map_;
+	int size_;
 };
 
 class texture
@@ -785,8 +888,19 @@ public:
         glFramebufferTexture( GL_FRAMEBUFFER, attachment_target, texture_, mipmap_level );
     }
 
+	template<typename ColorMapType, typename DepthMapType>
+	void attach_on(cubemap_framebuffer<ColorMapType, DepthMapType> &fb, GLenum attachment_target, GLint mipmap_level = 0)
+	{
+		for (int i = 0; i < 6; ++i) {
+			fb.bind(i);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_target, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texture_, mipmap_level);
+		}
+	}
+
     inline static std::unique_ptr<texture> generate_rgb_buffer( int width, int height );
     inline static std::unique_ptr<texture> generate_depth_buffer( int width, int height );
+    inline static std::unique_ptr<texture> generate_cube_rgb_buffer( int size );
+    inline static std::unique_ptr<texture> generate_cube_depth_buffer( int size );
 protected:
     GLenum target_;
     GLuint texture_;
@@ -819,6 +933,44 @@ inline std::unique_ptr<texture> texture::generate_depth_buffer( int width, int h
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE );
 
     return tex;
+}
+inline std::unique_ptr<texture> texture::generate_cube_rgb_buffer( int size )
+{
+    std::unique_ptr<texture> tex( new texture( GL_TEXTURE_CUBE_MAP ) );
+    tex->bind();
+
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0 );
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0 );
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, 0 );
+	
+	return tex;
+}
+
+inline std::unique_ptr<texture> texture::generate_cube_depth_buffer( int size )
+{
+    std::unique_ptr<texture> tex( new texture( GL_TEXTURE_CUBE_MAP ) );
+    tex->bind();
+
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+    glTexImage2D( GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_DEPTH_COMPONENT32F, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
+
+	return tex;
 }
 
 #define GLS_CHECK_ERROR()\

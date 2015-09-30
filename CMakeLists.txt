@@ -71,6 +71,13 @@ file(COPY ${CONTRIB_LIST} DESTINATION "${PROJECT_BINARY_DIR}/")
 
 INCLUDE_DIRECTORIES("${CONTRIB_DIR}/include")
 
+configure_file(
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/global_config.h.in"
+	"${CMAKE_CURRENT_BINARY_DIR}/global_config.h"
+	)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 #from http://cmake.org/pipermail/cmake/2013-November/056332.html
 macro(GroupSources curdir)
    file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)
@@ -84,8 +91,8 @@ macro(GroupSources curdir)
    endforeach()
 endmacro()
    
-# Execute the macro
-GroupSources(src) 
+GroupSources(src)
+GroupSources(res)
 
 #Main codes
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src")
@@ -98,10 +105,25 @@ file(GLOB_RECURSE SOURCE_LIST
 	"${PROJECT_SOURCE_DIR}/src/*.hpp"
 	"${PROJECT_SOURCE_DIR}/src/*.hh"
 	"${PROJECT_SOURCE_DIR}/src/*.hxx"
-	"${PROJECT_SOURCE_DIR}/src/*.inl")
+	"${PROJECT_SOURCE_DIR}/src/*.inl"
+	"${PROJECT_SOURCE_DIR}/src/*.in")
+
+file(GLOB_RECURSE RESOURCE_LIST
+	"${PROJECT_SOURCE_DIR}/res/*")
+
+set_source_files_properties(${RESOURCE_LIST} PROPERTIES HEADER_FILE_ONLY TRUE)
+
+
+add_executable(${PROJECT_NAME} ${SOURCE_LIST} ${RESOURCE_LIST})
+target_link_libraries(${PROJECT_NAME} ${CPM_LIBRARIES} ${EMBREE_LIBRARY})
 
 #Resources
-FILE(COPY "${PROJECT_SOURCE_DIR}/res" DESTINATION "${PROJECT_BINARY_DIR}/")
-
-add_executable(${PROJECT_NAME} ${SOURCE_LIST})
-target_link_libraries(${PROJECT_NAME} ${CPM_LIBRARIES} ${EMBREE_LIBRARY})
+file(GLOB_RECURSE RESOURCE_LIST_NAMES RELATIVE "${PROJECT_SOURCE_DIR}/res"
+	"${PROJECT_SOURCE_DIR}/res/*")
+#FILE(COPY "${PROJECT_SOURCE_DIR}/res" DESTINATION "${PROJECT_BINARY_DIR}/")
+FOREACH(FN ${RESOURCE_LIST_NAMES})
+	add_custom_command(OUTPUT "${PROJECT_BINARY_DIR}/res/${FN}"
+		MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/res/${FN}"
+					   COMMAND ${CMAKE_COMMAND} -E copy
+						   "${PROJECT_SOURCE_DIR}/res/${FN}" "${PROJECT_BINARY_DIR}/res/${FN}")
+ENDFOREACH()

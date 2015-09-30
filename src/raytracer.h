@@ -21,42 +21,31 @@ struct area_light_t
     glm::vec3 intensity;
     glm::vec3 direction;
 };
-//
-//struct scope_guard
-//{
-//	scope_guard();
-//	scope_guard(const scope_guard &rhs) = delete;
-//	scope_guard(scope_guard &&rhs) = delete;
-//	~scope_guard()
-//	{}
-//	scope_guard &operator=(const scope_guard &rhs) = delete;
-//	scope_guard &operator=(scope_guard &&rhs) = delete;
-//};
 
 class raytracer
 {
     RTCScene scene_;
-	std::default_random_engine random_engine_;
-	std::uniform_real_distribution<float> uniform_real_distribution_jitter_;
-	std::uniform_real_distribution<float> uniform_real_distribution_01_;
+    std::default_random_engine random_engine_;
+    std::uniform_real_distribution<float> uniform_real_distribution_jitter_;
+    std::uniform_real_distribution<float> uniform_real_distribution_01_;
 
-	std::vector<unsigned int> geomIDs;
-	std::map<unsigned int, host_mesh_t> geomIDToMesh;
+    std::vector<unsigned int> geomIDs;
+    std::map<unsigned int, host_mesh_t> geomIDToMesh;
 
 public:
-	static constexpr int kRecursionDepthHardLimit = 20; //to prevent stack overflow in recursive VPL algorithm
+    static constexpr int kRecursionDepthHardLimit = 20; //to prevent stack overflow in recursive VPL algorithm
 
-	raytracer();
-	~raytracer();
-	raytracer(const raytracer &rhs) = delete;
-	raytracer(raytracer &&rhs) = delete;
-	raytracer &operator=(const raytracer &rhs) = delete;
-	raytracer &operator=(raytracer &&rhs) = delete;
+    raytracer();
+    ~raytracer();
+    raytracer( const raytracer &rhs ) = delete;
+    raytracer( raytracer &&rhs ) = delete;
+    raytracer &operator=( const raytracer &rhs ) = delete;
+    raytracer &operator=( raytracer &&rhs ) = delete;
 
     void add_mesh( host_mesh_t mesh );
-	void commit_scene();
-    std::vector<point_light_t> compute_vpl( point_light_t light, unsigned int recursion_depth_left = kRecursionDepthHardLimit);
-    std::vector<point_light_t> compute_vpl( area_light_t light, unsigned int light_sample_count);
+    void commit_scene();
+    std::vector<point_light_t> compute_vpl( point_light_t light, unsigned int recursion_depth_left = kRecursionDepthHardLimit );
+    std::vector<point_light_t> compute_vpl( area_light_t light, unsigned int light_sample_count );
 };
 
 glm::vec3 randDirHemisphere( glm::vec3 normal, float v1, float v2 );
