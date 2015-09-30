@@ -18,7 +18,7 @@
 #include "system_context.h"
 #include "device_mesh.h"
 #include "gl_snippets.h"
-#include "InstantRadiosity.h"
+#include "raytracer.h"
 
 int mouse_buttons = 0;
 int mouse_old_x = 0, mouse_dof_x = 0;
@@ -94,12 +94,7 @@ void render_forward()
 
     context->gls_programs[kGlsProgramSceneDraw].bind();
     context->gls_programs[kGlsProgramSceneDraw].set_uniform<int>( 6 /*u_numLights*/, int( context->VPLs.size() ) );
-    /*
-    if (indirectON)
-    glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), nVPLs);
-    else
-    glUniform1i(glGetUniformLocation(forward_shading_prog, "u_numVPLs"), 0);
-    */
+
     {
         context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from( 0 /*u_ModelMat*/, model, view, perspective );
         context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
@@ -107,12 +102,13 @@ void render_forward()
         context->gls_framebuffers[kGlsFramebufferScreen].bind();
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-        for( int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter )
+        //for( int lightIter = 0; lightIter < context->VPLs.size(); ++lightIter )
+		for (int lightIter = 0; lightIter < context->shown_vpl_index; ++lightIter)
         {
+			context->gls_programs[kGlsProgramSceneDraw].bind();
             context->gls_programs[kGlsProgramSceneDraw].set_uniforms_from( 3 /*u_vplPosition*/, context->VPLs[lightIter].position, context->VPLs[lightIter].intensity, context->VPLs[lightIter].direction );
 
-            context->gls_programs[kGlsProgramSceneDraw].bind();
-            context->gls_framebuffers[kGlsFramebufferScreen].bind();
+            context->gls_framebuffers[kGlsFramebufferSceneDraw].bind();
             glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
             for( int i = 0; i < context->drawMeshes.size(); i++ )
             {
@@ -120,48 +116,26 @@ void render_forward()
                 context->drawMeshes[i].draw();
             }
 
-            /*
-            glUseProgram(progs[kGlsProgramQuadDraw]);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            // bind accumulation texture
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, textures[kGlsTextureScene]);
-            glUniform1i(textureLoc, 0);
-            // draw screenquad with accumulation texture
-            glBindVertexArray(device_quad.vertex_array);
-            glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
-            */
-            /*
-            glUseProgram(progs[kGlsProgramQuadDraw]);
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo[kGlsFramebufferAccumulate]);
-            // bind scenedraw texture
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, textures[kGlsTextureScene]);
-            glUniform1i(textureLoc, 0);
-            // enable blend
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-            // draw screenquad with scenedraw texture
-            glBindVertexArray(device_quad.vertex_array);
-            glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
-            // disable blend
-            glDisable(GL_BLEND);
-            */
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			
+			context->gls_programs[kGlsProgramQuadDraw].bind();
+			context->gls_framebuffers[kGlsFramebufferScreen].bind();
+			glActiveTexture(GL_TEXTURE0);
+			context->gls_framebuffers[kGlsFramebufferSceneDraw].get_color_map().bind();
+			context->gls_programs[kGlsProgramQuadDraw].set_uniform<int>(0 /*u_Tex*/, 0);
+			context->quad_mesh->draw();
+
+			glDisable(GL_BLEND);
         }
-        /*
-        glUseProgram(progs[kGlsProgramQuadDraw]);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // bind accumulation texture
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textures[kGlsTextureAccumulate]);
-        glUniform1i(textureLoc, 0);
-        // draw screenquad with accumulation texture
-        glBindVertexArray(device_quad.vertex_array);
-        glDrawElements(GL_TRIANGLES, device_quad.num_indices, GL_UNSIGNED_SHORT, 0);
-        */
+
+		//context->gls_programs[kGlsProgramQuadDraw].bind();
+		//context->gls_framebuffers[kGlsFramebufferScreen].bind();
+		//glActiveTexture(GL_TEXTURE0);
+		//context->gls_framebuffers[kGlsFramebufferAccumulate].get_color_map().bind();
+		//context->gls_programs[kGlsProgramQuadDraw].set_uniform<int>(0 /*u_Tex*/, 0);
+		//context->quad_mesh->draw();
     }
-    glBindVertexArray( 0 );
-    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
 }
 
 void window_callback_mouse_button( GLFWwindow *window, int button, int action, int mods )
@@ -263,9 +237,9 @@ void window_callback_key( GLFWwindow *window, int key, int scancode, int action,
     case( '7' ):
         display_type = kDisplayTypeShadow;
         break;
-    /*case( ' ' ):
+    case( ' ' ):
         context->shown_vpl_index = ( context->shown_vpl_index + 1 ) % context->VPLs.size();
-        break;*/
+        break;
     }
 
     if( abs( tx ) > 0 ||  abs( tz ) > 0 || abs( ty ) > 0 )
@@ -408,6 +382,7 @@ int main( int argc, char *argv[] )
 
     //Step 3: Initialize objects
     init();
+	context->initialize_quad_mesh();
 
     //Step 4: Main loop
     while( !glfwWindowShouldClose( context->window ) )

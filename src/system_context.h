@@ -12,7 +12,7 @@
 
 #include "gl_snippets.h"
 #include "camera.h"
-#include "InstantRadiosity.h"
+#include "raytracer.h"
 
 class device_mesh_t;
 
@@ -29,24 +29,30 @@ public:
 
 protected:
     system_context( const camera_t &pCam, const glm::uvec2 &viewport ) :
-        pCam( pCam ), viewport( viewport ), irKernel( new InstantRadiosityEmbree() )
+        pCam( pCam ), viewport( viewport ), irKernel( new raytracer() )
     {
     }
-    std::unique_ptr<InstantRadiosityEmbree> irKernel;
-    AreaLightData light;
+    std::unique_ptr<raytracer> irKernel;
+    area_light_t light;
 
 public:
     std::vector<device_mesh_t> drawMeshes;
+	std::unique_ptr<device_mesh_t> quad_mesh;
     GLFWwindow *window;
     camera_t pCam;
     glm::uvec2 viewport;
-    std::vector<LightData> VPLs;
+    std::vector<point_light_t> VPLs;
 
     //gls objects
     std::vector<gls::program> gls_programs;
     std::vector<gls::buffer> gls_buffers;
     std::vector<gls::vertex_array> gls_vertex_arrays;
     std::vector<gls::framebuffer<gls::texture, gls::texture> > gls_framebuffers;
+	
+	void initialize_quad_mesh();
+
+	unsigned int shown_vpl_index = 0;
+
 protected:
     static std::unique_ptr<system_context> global_context_;
 public:

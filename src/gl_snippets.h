@@ -710,6 +710,12 @@ public:
         depth_map_ = std::move( rhs.depth_map_ );
         return *this;
     }
+	ColorMapType &get_color_map() {
+		return *color_map_.get();
+	}
+	DepthMapType &get_depth_map() {
+		return *depth_map_.get();
+	}
 private:
     GLuint framebuffer_;
     std::unique_ptr<ColorMapType> color_map_;

@@ -24,7 +24,7 @@ GLS_PROGRAM_DEFINE(
     kProgramQuadDraw,
     "res/shaders/post.vert",
     "res/shaders/post.frag",
-{ "Position", "Texcoord" },
+{ "Position",  "Normal", "Texcoord" },
 { "outColor" },
 { "u_Tex" }
 );

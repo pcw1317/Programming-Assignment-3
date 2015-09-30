@@ -3,6 +3,7 @@
 uniform sampler2D u_Tex;
 
 in vec3 Position;
+in vec3 Normal;
 in vec2 Texcoord;
 
 out vec2 fs_Texcoord;
