@@ -106,7 +106,7 @@ void raytracer::add_mesh( host_mesh_t mesh )
     geom_id_to_mesh_[geom_id] = mesh;
 }
 
-std::vector<point_light_t> raytracer::compute_vpl( point_light_t &light, unsigned int recursion_depth_left )
+std::vector<point_light_t> raytracer::compute_vpl( point_light_t &light, float root_intensity, unsigned int recursion_depth_left )
 {
     std::vector<point_light_t> res;
     res.push_back( light );	// add itself as the VPL first
@@ -139,8 +139,8 @@ std::vector<point_light_t> raytracer::compute_vpl( point_light_t &light, unsigne
     if( ray.geomID == RTC_INVALID_GEOMETRY_ID )
         return res;
     // skip if russian roulette failed
-    float rr_probability = ( geom_id_to_mesh_[ray.geomID].diffuse_color.x + geom_id_to_mesh_[ray.geomID].diffuse_color.y + geom_id_to_mesh_[ray.geomID].diffuse_color.z ) / 3;
-    //float rr_probability = glm::length(light.intensity) / 15.f;
+    //float rr_probability = ( geom_id_to_mesh_[ray.geomID].diffuse_color.x + geom_id_to_mesh_[ray.geomID].diffuse_color.y + geom_id_to_mesh_[ray.geomID].diffuse_color.z ) / 3;
+    float rr_probability = glm::length(light.intensity) / root_intensity;
     if( rr_probability <= uniform_real_distribution_01_( random_engine_ ) )
         return res;
 
@@ -149,14 +149,16 @@ std::vector<point_light_t> raytracer::compute_vpl( point_light_t &light, unsigne
     glm::vec3 ray_dir = glm::make_vec3( ray.dir );
     glm::vec3 ray_ng = glm::normalize( glm::make_vec3( ray.Ng ) );
 
-    light.position = ray_org + ray_dir * ray.tfar;
-    light.intensity = light.intensity	// light color
-                      * geom_id_to_mesh_[ray.geomID].diffuse_color	// diffuse only
-                      / rr_probability;	// russian roulette weight
-    light.direction = ray_ng;
+	point_light_t lightSample;
+	lightSample.position = ray_org + ray_dir * ray.tfar;
+	lightSample.intensity = light.intensity             // light color
+		* geom_id_to_mesh_[ray.geomID].diffuse_color    // diffuse only
+		* glm::dot(-ray_dir, ray_ng)					// Lambertian cosine term
+		/ rr_probability;								// Russian Roulette weight
+	lightSample.direction = ray_ng;
 
     // recurse to make a global illumination
-    std::vector<point_light_t> vpls = compute_vpl( light, recursion_depth_left - 1 );
+    std::vector<point_light_t> vpls = compute_vpl( lightSample, root_intensity, recursion_depth_left - 1 );
     res.insert( res.end(), vpls.begin(), vpls.end() );
 
     return res;
@@ -179,10 +181,10 @@ std::vector<point_light_t> raytracer::compute_vpl( area_light_t light, unsigned 
         glm::vec2 area = ( light.aabb_max - light.aabb_min ).xz();
         light_sample.intensity =
             light.intensity					// L(x)
-            * ( area.x * area.y )				// 1/pdf of light sampling
+            * ( area.x * area.y )			// 1/pdf of light sampling
             / float( light_sample_count );	// Monte Carlo integration divisor
 
-        std::vector<point_light_t> vpls = compute_vpl( light_sample );
+        std::vector<point_light_t> vpls = compute_vpl( light_sample, glm::length(light_sample.intensity) );
         res.insert( res.end(), vpls.begin(), vpls.end() );
     }
 

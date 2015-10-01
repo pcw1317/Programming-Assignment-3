@@ -42,6 +42,6 @@ public:
 
     void add_mesh( host_mesh_t mesh );
     void commit_scene();
-    std::vector<point_light_t> compute_vpl( point_light_t &light, unsigned int recursion_depth_left = kRecursionDepthHardLimit );
+    std::vector<point_light_t> compute_vpl( point_light_t &light, float root_intensity, unsigned int recursion_depth_left = kRecursionDepthHardLimit );
     std::vector<point_light_t> compute_vpl( area_light_t light, unsigned int light_sample_count );
 };
