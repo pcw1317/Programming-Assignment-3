@@ -423,7 +423,7 @@ opengl_initializer_t::opengl_initializer_t()
 
         //check version requirement
         //TODO: update correct requirement later
-        if( !GLEW_VERSION_3_3 || !GLEW_ARB_compute_shader )
+        if( !GLEW_VERSION_3_3 )
             throw std::runtime_error( "This program requires OpenGL 3.3 class graphics card." );
         else
         {
