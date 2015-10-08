@@ -418,6 +418,7 @@ opengl_initializer_t::opengl_initializer_t()
         glfwSetMouseButtonCallback( context->window, window_callback_mouse_button );
 
         //initialize glew
+        glewExperimental = GL_TRUE;
         if( glewInit() != GLEW_OK )
             throw std::runtime_error( "glewInit() failed" );
 
