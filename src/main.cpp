@@ -1,4 +1,5 @@
 #include "main.h"
+#include "save_image.h"
 
 #include <iostream>
 #include <string>
@@ -20,15 +21,122 @@
 #include "gl_snippets.h"
 #include "raytracer.h"
 
+#include "IlluminationCut.h"
+#include <vector>
+
+#define IC_ON	true
+
+
 int mouse_buttons = 0;
 int mouse_old_x = 0;
 int mouse_old_y = 0;
 
 system_context *context;
+LightTree *light_tree;
+PointTree *point_tree;
 
 glm::mat4 get_global_mesh_world()
 {
     return glm::mat4( 1.0 );
+}
+
+void save_to_bmp(){
+	int w = 1280, h = 720;
+
+	unsigned char* pixels = new unsigned char[3 * w * h];
+	glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+	FILE *f;
+	unsigned char *img = NULL;
+	int filesize = 54 + 3 * 1280 * 720;  //w is your image width, h is image height, both int
+	if (img)
+	free(img);
+	img = (unsigned char *)malloc(3 * w * h);
+	memset(img, 0, sizeof(img));
+
+	for (int i = 0; i<w; i++)
+	{
+		for (int j = 0; j<h; j++)
+		{
+			/*int x = i; int y = (h - 1) - j;
+			unsigned char r = pixels[w*j+i];
+			unsigned char g = pixels[w*j+i+1];
+			unsigned char b = pixels[w*j+i+2];
+			if (r > 255) r = 255;
+			if (g > 255) g = 255;
+			if (b > 255) b = 255;
+			img[(x + y*w) * 3 + 2] = (unsigned char)(r);
+			img[(x + y*w) * 3 + 1] = (unsigned char)(g);
+			img[(x + y*w) * 3 + 0] = (unsigned char)(b);*/
+			unsigned char r = pixels[w*j + i];
+			unsigned char g = pixels[w*j + i + 1];
+			unsigned char b = pixels[w*j + i + 2];
+			img[(i + j*w) * 3 + 0] = (unsigned char)(r);
+			img[(i + j*w) * 3 + 1] = (unsigned char)(g);
+			img[(i + j*w) * 3 + 2] = (unsigned char)(b);
+		}
+	}
+
+	unsigned char bmpfileheader[14] = { 'B','M', 0,0,0,0, 0,0, 0,0, 54,0,0,0 };
+	unsigned char bmpinfoheader[40] = { 40,0,0,0, 0,0,0,0, 0,0,0,0, 1,0, 24,0 };
+	unsigned char bmppad[3] = { 0,0,0 };
+
+	bmpfileheader[2] = (unsigned char)(filesize);
+	bmpfileheader[3] = (unsigned char)(filesize >> 8);
+	bmpfileheader[4] = (unsigned char)(filesize >> 16);
+	bmpfileheader[5] = (unsigned char)(filesize >> 24);
+
+	bmpinfoheader[4] = (unsigned char)(w);
+	bmpinfoheader[5] = (unsigned char)(w >> 8);
+	bmpinfoheader[6] = (unsigned char)(w >> 16);
+	bmpinfoheader[7] = (unsigned char)(w >> 24);
+	bmpinfoheader[8] = (unsigned char)(h);
+	bmpinfoheader[9] = (unsigned char)(h >> 8);
+	bmpinfoheader[10] = (unsigned char)(h >> 16);
+	bmpinfoheader[11] = (unsigned char)(h >> 24);
+
+	f = fopen("img.bmp", "wb");
+	fwrite(bmpfileheader, 1, 14, f);
+	fwrite(bmpinfoheader, 1, 40, f);
+	for (int i = 0; i<h; i++)
+	{
+		//fwrite(img + (w*(h - i - 1) * 3), 3, w, f);
+		fwrite(img + 3*w*i, 3, w, f);
+		fwrite(bmppad, 1, (4 - (w * 3) % 4) % 4, f);
+	}
+	fclose(f);
+}
+
+bool isIllumAwarePair(PointNode* point_cluster, LightNode* light_cluster) {
+	const float delta = 0.01;
+	float max = std::numeric_limits<float>::min();
+	float rep;
+
+	float rep_radiance = glm::length((*(light_cluster->vpls))[light_cluster->lights[light_cluster->rep_light]].intensity) * light_cluster->lights.size();
+
+	for (int i = 0; i < point_cluster->points.size(); i++) {
+		float rep_distance = glm::length(point_cluster->points[i] - (*(light_cluster->vpls))[light_cluster->lights[light_cluster->rep_light]].position);
+		rep_distance *= rep_distance;
+		float sum = 0.0;
+		for (int j = 0; j < light_cluster->lights.size(); j++) {
+			if (context->vpl_raytracer->raycast(point_cluster->points[i], (*(light_cluster->vpls))[light_cluster->lights[j]].position - point_cluster->points[i]) >= glm::length((*(light_cluster->vpls))[light_cluster->lights[j]].position - point_cluster->points[i])) {
+				float distance = glm::length((*(light_cluster->vpls))[light_cluster->lights[j]].position - point_cluster->points[i]);
+				distance *= distance;
+				sum += glm::length((*(light_cluster->vpls))[light_cluster->lights[j]].intensity) / distance;
+			}
+		}
+		rep = (context->vpl_raytracer->raycast(point_cluster->points[i], (*(light_cluster->vpls))[light_cluster->lights[light_cluster->rep_light]].position - point_cluster->points[i])) >= rep_distance ? rep_radiance/rep_distance : 0.0;
+		max = abs(rep - sum) > max ? abs(rep - sum) : max;
+	}
+
+	if (max < delta*glm::length((*light_cluster->vpls)[light_cluster->lights[light_cluster->min_light]].intensity)) {
+		//printf("true\n");
+		return true;
+	}
+	else {
+		//printf("false\n");
+		return false;
+	}
 }
 
 void update_title()
@@ -53,91 +161,51 @@ void update_title()
     }
 }
 
-void perlight_draw( int light_index )
-{
-    glDisable( GL_BLEND );
-    glEnable( GL_DEPTH_TEST );
-    context->gls_programs[kGlsProgramSceneDraw].bind();
-    context->gls_programs[kGlsProgramSceneDraw].set_uniforms(
-        //"u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex"
-        gls::no_change,
-        gls::no_change,
-        gls::no_change,
-        context->vpls[light_index].position,
-        context->vpls[light_index].intensity,
-        context->vpls[light_index].direction,
-        gls::no_change,
-        gls::no_change,
-        gls::no_change,
-        gls::no_change );
-    context->gls_framebuffers[kGlsFramebufferSceneDraw].bind();
-    context->gls_framebuffers[kGlsFramebufferSceneDraw].set_viewport();
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-    glActiveTexture( GL_TEXTURE0 );
-    context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].get_color_map().bind();
-
-    for( int i = 0; i < context->scene_meshes.size(); i++ )
-    {
-        context->gls_programs[kGlsProgramSceneDraw].set_uniforms(
-            //"u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex"
-            gls::no_change,
-            gls::no_change,
-            gls::no_change,
-            gls::no_change,
-            gls::no_change,
-            gls::no_change,
-            gls::no_change,
-            context->scene_meshes[i].ambient_color,
-            context->scene_meshes[i].diffuse_color,
-            gls::no_change );
-        context->scene_meshes[i].draw();
-    }
-};
 
 //from https://github.com/cforfang/opengl-shadowmapping/blob/master/src/vsmcube/main.cpp
-std::pair<glm::mat4, glm::mat4> get_shadow_matrices( glm::vec3 light_pos, int dir )
+std::pair<glm::mat4, glm::mat4> get_shadow_matrices(glm::vec3 light_pos, int dir)
 {
-    glm::mat4 v, p;
-    p = glm::perspective( 90.0f, 1.0f, 0.1f, 1000.0f );
-    switch( dir )
-    {
-    case 0:
-        // +X
-        v = glm::lookAt( light_pos, light_pos + glm::vec3( +1, +0, 0 ), glm::vec3( 0, -1, 0 ) );
-        p *= v;
-        break;
-    case 1:
-        // -X
-        v = glm::lookAt( light_pos, light_pos + glm::vec3( -1, +0, 0 ), glm::vec3( 0, -1, 0 ) );
-        p *= v;
-        break;
-    case 2:
-        // +Y
-        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, +1, 0 ), glm::vec3( 0, 0, -1 ) );
-        p *= v;
-        break;
-    case 3:
-        // -Y
-        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, -1, 0 ), glm::vec3( 0, 0, -1 ) );
-        p *= v;
-        break;
-    case 4:
-        // +Z
-        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, 0, +1 ), glm::vec3( 0, -1, 0 ) );
-        p *= v;
-        break;
-    case 5:
-        // -Z
-        v = glm::lookAt( light_pos, light_pos + glm::vec3( 0, 0, -1 ), glm::vec3( 0, -1, 0 ) );
-        p *= v;
-        break;
-    default:
-        // Do nothing
-        break;
-    }
-    return std::make_pair( v, p );
+	glm::mat4 v, p;
+	p = glm::perspective(90.0f, 1.0f, 0.1f, 1000.0f);
+	switch (dir)
+	{
+	case 0:
+		// +X
+		v = glm::lookAt(light_pos, light_pos + glm::vec3(+1, +0, 0), glm::vec3(0, -1, 0));
+		p *= v;
+		break;
+	case 1:
+		// -X
+		v = glm::lookAt(light_pos, light_pos + glm::vec3(-1, +0, 0), glm::vec3(0, -1, 0));
+		p *= v;
+		break;
+	case 2:
+		// +Y
+		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, +1, 0), glm::vec3(0, 0, -1));
+		p *= v;
+		break;
+	case 3:
+		// -Y
+		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, -1, 0), glm::vec3(0, 0, -1));
+		p *= v;
+		break;
+	case 4:
+		// +Z
+		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, 0, +1), glm::vec3(0, -1, 0));
+		p *= v;
+		break;
+	case 5:
+		// -Z
+		v = glm::lookAt(light_pos, light_pos + glm::vec3(0, 0, -1), glm::vec3(0, -1, 0));
+		p *= v;
+		break;
+	default:
+		// Do nothing
+		break;
+	}
+	return std::make_pair(v, p);
 }
+
 
 void perlight_generate_shadow_map( int light_index )
 {
@@ -163,6 +231,48 @@ void perlight_generate_shadow_map( int light_index )
     }
 };
 
+void perlight_draw(int light_index, int count)
+{
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	context->gls_programs[kGlsProgramSceneDraw].bind();
+	context->gls_programs[kGlsProgramSceneDraw].set_uniforms(
+		//"u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex"
+		gls::no_change,
+		gls::no_change,
+		gls::no_change,
+		context->vpls[light_index].position,
+		context->vpls[light_index].intensity * (float)count,
+		context->vpls[light_index].direction,
+		gls::no_change,
+		gls::no_change,
+		gls::no_change,
+		gls::no_change);
+	context->gls_framebuffers[kGlsFramebufferSceneDraw].bind();
+	context->gls_framebuffers[kGlsFramebufferSceneDraw].set_viewport();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glActiveTexture(GL_TEXTURE0);
+	context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow].get_color_map().bind();
+
+	for (int i = 0; i < context->scene_meshes.size(); i++)
+	{
+		context->gls_programs[kGlsProgramSceneDraw].set_uniforms(
+			//"u_modelMat", "u_viewMat" , "u_perspMat", "u_vplPosition", "u_vplIntensity", "u_vplDirection", "u_numLights", "u_ambientColor", "u_diffuseColor", "u_shadowTex"
+			gls::no_change,
+			gls::no_change,
+			gls::no_change,
+			gls::no_change,
+			gls::no_change,
+			gls::no_change,
+			gls::no_change,
+			context->scene_meshes[i].ambient_color,
+			context->scene_meshes[i].diffuse_color,
+			gls::no_change);
+		context->scene_meshes[i].draw();
+	}
+};
+
 void perlight_accumulate( int light_index )
 {
     glEnable( GL_BLEND );
@@ -177,7 +287,21 @@ void perlight_accumulate( int light_index )
     context->quad_mesh.draw();
 };
 
-void visualize_accumulation()
+void perlight_accumulate2(int light_index)
+{
+	glEnable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+	glBlendFunc(GL_ONE, GL_ONE); //perform additive blending
+
+	context->gls_programs[kGlsProgramQuadDraw].bind();
+	context->gls_framebuffers[kGlsFramebufferIlluminationCut].bind();
+	context->gls_framebuffers[kGlsFramebufferIlluminationCut].set_viewport();
+	glActiveTexture(GL_TEXTURE0);
+	context->gls_framebuffers[kGlsFramebufferSceneDraw].get_color_map().bind();
+	context->quad_mesh.draw();
+};
+
+void visualize_accumulation(gls_framebuffer_t mode)
 {
     glDisable( GL_BLEND );
     glDisable( GL_DEPTH_TEST );
@@ -186,15 +310,24 @@ void visualize_accumulation()
     context->gls_framebuffers[kGlsFramebufferScreen].bind();
     context->gls_framebuffers[kGlsFramebufferScreen].set_viewport();
     glActiveTexture( GL_TEXTURE0 );
-    context->gls_framebuffers[kGlsFramebufferAccumulate].get_color_map().bind();
+    context->gls_framebuffers[mode].get_color_map().bind();
     context->quad_mesh.draw();
 };
 
 void render()
 {
-    //clear accumulation framebuffer frst
-    context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	//if (IC_ON) {
+	//	//clear illuminationcut framebuffer first
+	//	context->gls_framebuffers[kGlsFramebufferIlluminationCut].bind();
+	//	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//}
+	//else {
+	//	//clear accumulation framebuffer first
+	//	context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
+	//	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//}
+	context->gls_framebuffers[kGlsFramebufferAccumulate].bind();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glm::mat4 model = get_global_mesh_world(); //assume that model matrix is constant across models!
     glm::mat4 view = context->camera.get_view();
@@ -225,22 +358,89 @@ void render()
         gls::no_change,
         gls::no_change );
 
-    if( context->shown_vpl_index == context->vpls.size() )
-    {
-        for( int light_index = 0; light_index < context->vpls.size(); ++light_index )
-        {
-            perlight_generate_shadow_map( light_index );
-            perlight_draw( light_index );
-            perlight_accumulate( light_index );
-        }
-    }
-    else
-    {
-        perlight_generate_shadow_map( context->shown_vpl_index );
-        perlight_draw( context->shown_vpl_index );
-        perlight_accumulate( context->shown_vpl_index );
-    }
-    visualize_accumulation();
+	if (IC_ON) {
+		if (context->shown_vpl_index == context->vpls.size())
+		{
+			std::vector<PointNode*>point_stack = std::vector<PointNode*>();
+			std::vector<LightNode*>light_stack = std::vector<LightNode*>();
+
+			point_stack.push_back(point_tree->root);
+			light_stack.push_back(light_tree->root);
+
+			while (point_stack.size() > 0) {
+				PointNode* point_cluster = point_stack.back();
+				LightNode* light_cluster = light_stack.back();
+				point_stack.pop_back();
+				light_stack.pop_back();
+				if (isIllumAwarePair(point_cluster, light_cluster)) {
+					perlight_generate_shadow_map(light_cluster->lights[light_cluster->rep_light]);
+					perlight_draw(light_cluster->lights[light_cluster->rep_light], light_cluster->lights.size());
+					perlight_accumulate(light_cluster->lights[light_cluster->rep_light]);
+				}
+				else {
+					if (light_cluster->radius > point_cluster->radius) {
+						if (light_cluster->left_child == NULL && light_cluster->right_child == NULL) {
+							perlight_generate_shadow_map(light_cluster->lights[light_cluster->rep_light]);
+							perlight_draw(light_cluster->lights[light_cluster->rep_light], light_cluster->lights.size());
+							perlight_accumulate(light_cluster->lights[light_cluster->rep_light]);
+						}
+						else {
+							point_stack.push_back(point_cluster);
+							light_stack.push_back(light_cluster->left_child);
+							point_stack.push_back(point_cluster);
+							light_stack.push_back(light_cluster->right_child);
+						}
+					}
+					else {
+						bool has_child = false;
+						for (int i = 0; i < 8; i++)
+							if (point_cluster->children[i] != NULL) {
+								has_child = true;
+								break;
+							}
+						if (!has_child) {
+							perlight_generate_shadow_map(light_cluster->lights[light_cluster->rep_light]);
+							perlight_draw(light_cluster->lights[light_cluster->rep_light], light_cluster->lights.size());
+							perlight_accumulate(light_cluster->lights[light_cluster->rep_light]);
+						}
+						else {
+							for (int i = 0; i < 8; i++) {
+								if (point_cluster->children[i] != NULL) {
+									point_stack.push_back(point_cluster->children[i]);
+									light_stack.push_back(light_cluster);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			perlight_generate_shadow_map(context->shown_vpl_index);
+			perlight_draw(context->shown_vpl_index, 1);
+			perlight_accumulate(context->shown_vpl_index);
+		}
+		visualize_accumulation(kGlsFramebufferAccumulate);
+	}
+	else {
+		if (context->shown_vpl_index == context->vpls.size())
+		{
+			for (int light_index = 0; light_index < context->vpls.size(); ++light_index)
+			{
+				perlight_generate_shadow_map(light_index);
+				perlight_draw(light_index, 1);
+				perlight_accumulate(light_index);
+			}
+		}
+		else
+		{
+			perlight_generate_shadow_map(context->shown_vpl_index);
+			perlight_draw(context->shown_vpl_index, 1);
+			perlight_accumulate(context->shown_vpl_index);
+		}
+		visualize_accumulation(kGlsFramebufferAccumulate);
+	}
 }
 
 void window_callback_mouse_button( GLFWwindow *window, int button, int action, int mods )
@@ -374,6 +574,7 @@ void init()
     context->gls_framebuffers[kGlsFramebufferScreen] = gls::framebuffer<gls::texture, gls::texture>( context->viewport.x, context->viewport.y, true ); //default screen framebuffer
     context->gls_framebuffers[kGlsFramebufferSceneDraw] = gls::framebuffer<gls::texture, gls::texture>( context->viewport.x, context->viewport.y );
     context->gls_framebuffers[kGlsFramebufferAccumulate] = gls::framebuffer<gls::texture, gls::texture>( context->viewport.x, context->viewport.y );
+	context->gls_framebuffers[kGlsFramebufferIlluminationCut] = gls::framebuffer<gls::texture, gls::texture>(context->viewport.x, context->viewport.y);
 
     //cubemap framebuffers
     context->gls_cubemap_framebuffers[kGlsCubemapFramebufferShadow] = gls::cubemap_framebuffer<gls::texture, gls::texture>( kShadowSize ); //default screen framebuffer
@@ -445,6 +646,9 @@ opengl_initializer_t::~opengl_initializer_t()
 }
 int main( int argc, char *argv[] )
 {
+	std::clock_t start;
+	start = std::clock();
+
     //Step 0: Initialize our system context
     {
         glm::uvec2 viewport( 1280, 720 );
@@ -475,18 +679,24 @@ int main( int argc, char *argv[] )
         return EXIT_FAILURE;
     }
 
-    //Step 2: Load mesh into memory
+    //Step 2: Load mesh into memory & Construct tree structures for IlluminationCut
     if( argc > 1 )
     {
         try
         {
-            context->load_mesh( argv[1] );
+			point_tree = new PointTree();
+            context->load_mesh( argv[1], point_tree);
         }
         catch( const std::exception &e )
         {
             std::cerr << "Mesh load failed. Reason: " << e.what() << "\nAborting.\n";
             return EXIT_FAILURE;
         }
+		srand(time(NULL));
+		light_tree = new LightTree(context->vpls);
+		light_tree->cluster();
+
+		point_tree->cluster();
     }
     else
     {
@@ -505,6 +715,7 @@ int main( int argc, char *argv[] )
         return EXIT_FAILURE;
     }
 
+	std::cout << "Time: " << (std::clock() - start) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     //Step 4: Main loop
     while( !glfwWindowShouldClose( context->window ) )
     {
@@ -512,7 +723,39 @@ int main( int argc, char *argv[] )
         update_title();
 
         glfwSwapBuffers( context->window );
+
+		/*int width = 1280, height = 720;
+		BYTE* pixels = new BYTE[3 * width * height];
+		BYTE* buf = new BYTE[3 * width * height];
+
+		glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+		
+		unsigned long imageSize = 0;
+		unsigned long padding = 0;
+
+		int c = 0;
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				buf[c + 0] = pixels[width*i + j];
+				buf[c + 1] = pixels[width*i + j + 1];
+				buf[c + 2] = pixels[width*i + j + 2];
+
+				c += 3;
+			}
+		}
+
+		// Use the new array data to create the new bitmap file
+		SaveBitmapToFile((BYTE*)buf,
+			width,
+			height,
+			24,
+			0,
+			"img.bmp");
+		*/
         glfwPollEvents();
+		
     }
 
     return EXIT_SUCCESS;

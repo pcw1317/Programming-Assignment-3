@@ -15,6 +15,8 @@
 #include "raytracer.h"
 #include "device_mesh.h"
 
+#include "IlluminationCut.h"
+
 class system_context
 {
 public:
@@ -24,13 +26,14 @@ public:
     system_context( system_context && ) = delete;
     system_context &operator=( system_context && ) = delete;
 
-    void load_mesh( const char *path );
+    void load_mesh( const char *path, PointTree* point_tree );
 
 protected:
     system_context( const camera_t &camera, const glm::uvec2 &viewport ) :
         camera( camera ), viewport( viewport ), vpl_raytracer( new raytracer() )
     {
     }
+public:
     std::unique_ptr<raytracer> vpl_raytracer;
     area_light_t light;
 

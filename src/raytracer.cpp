@@ -190,3 +190,28 @@ std::vector<point_light_t> raytracer::compute_vpl( area_light_t light, unsigned 
 
     return res;
 }
+
+float raytracer::raycast(glm::vec3 org, glm::vec3 dir) {
+	RTCRay ray;
+	std::memcpy(ray.org, glm::value_ptr(org), sizeof(ray.org));
+	std::memcpy(ray.dir, glm::value_ptr(dir), sizeof(ray.dir));
+	ray.tnear = 0.01;
+	ray.tfar = INFINITY;
+	ray.geomID = RTC_INVALID_GEOMETRY_ID;
+	ray.primID = RTC_INVALID_GEOMETRY_ID;
+	ray.instID = RTC_INVALID_GEOMETRY_ID;
+	ray.mask = 0xFFFFFFFF;
+	ray.time = 0.f;
+
+	// Intersect!
+	rtcIntersect(scene_, ray);
+
+	if (ray.geomID == RTC_INVALID_GEOMETRY_ID) {
+		//printf("false\n");
+		return INFINITY;
+	}
+	else {
+		//printf("true\n");
+		return ray.tfar;
+	}
+}

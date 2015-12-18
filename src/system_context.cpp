@@ -7,10 +7,13 @@
 #include "device_mesh.h"
 #include "main.h"
 
+#include "IlluminationCut.h"
+
 std::unique_ptr<system_context> system_context::global_context_ = nullptr;
 
-void system_context::load_mesh( const char *path )
+void system_context::load_mesh( const char *path, PointTree* point_tree )
 {
+
     std::vector<tinyobj::shape_t> shapes;
     //read shapes using tinyobj first
     {
@@ -36,6 +39,21 @@ void system_context::load_mesh( const char *path )
         host_mesh_t mesh = host_mesh_t( shape );
         //std::cout << mesh.get_aabb().first.x << " " << mesh.get_aabb().first.y << " " << mesh.get_aabb().first.z << ", " << mesh.get_aabb().second.x << " " << mesh.get_aabb().second.y <<  " " << mesh.get_aabb().second.z << std::endl;
         scene_meshes.push_back( device_mesh_t( mesh ) );
+
+		for (int i = 0; i < mesh.vertices.size(); i++) {
+			bool isAlready = false;
+			for (int j = 0; j < point_tree->root->points.size(); j++) {
+				if (mesh.vertices[i] == point_tree->root->points[j]) {
+					isAlready = true;
+					break;
+				}
+			}
+			if (!isAlready) {
+				point_tree->root->points.push_back(mesh.vertices[i]);
+				point_tree->root->normals.push_back(glm::normalize(mesh.normals[i]));
+			}
+		}
+
         vpl_raytracer->add_mesh( mesh );
         if( shape.material.name == "light" )
         {

@@ -42,8 +42,8 @@ constexpr float PI = 3.14159f;
 constexpr float kFarPlane = 2000.f;
 constexpr float kNearPlane = 0.1f;
 constexpr int kShadowSize = 256;
-constexpr int kVplCount = 128;
-
+constexpr int kVplCount = 10;
+//10, 37, 100, 300, 1000, 10000
 enum gls_program_t
 {
     kGlsProgramSceneDraw,
@@ -70,6 +70,7 @@ enum gls_framebuffer_t
     kGlsFramebufferScreen,
     kGlsFramebufferSceneDraw,
     kGlsFramebufferAccumulate,
+	kGlsFramebufferIlluminationCut,
     kGlsFramebufferMax
 };
 
